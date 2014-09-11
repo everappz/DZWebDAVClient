@@ -9,6 +9,8 @@
 #import "NSDate+ISO8601.h"
 #import "DZWebDAVLock.h"
 
+#import "DZXMLReader.h"
+
 NSString const *DZWebDAVContentTypeKey      = @"getcontenttype";
 NSString const *DZWebDAVETagKey             = @"getetag";
 NSString const *DZWebDAVCTagKey             = @"getctag";
@@ -28,7 +30,7 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
 - (id)initWithBaseURL:(NSURL *)url {
     if ((self = [super initWithBaseURL:url])) {
 		self.fileManager = [NSFileManager new];
-        [self registerHTTPOperationClass: [DZDictionaryRequestOperation class]];
+        [self registerHTTPOperationClass:[DZDictionaryRequestOperation class]];
     }
     return self;
 }
@@ -97,12 +99,36 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
     [request setValue: depthHeader forHTTPHeaderField: @"Depth"];
     [request setHTTPBody:[@"<?xml version=\"1.0\" encoding=\"utf-8\" ?><D:propfind xmlns:D=\"DAV:\"><D:allprop/></D:propfind>" dataUsingEncoding:NSUTF8StringEncoding]];
     [request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
-	AFHTTPRequestOperation *operation = [self HTTPRequestOperationWithRequest:request success:^(AFHTTPRequestOperation *operation, id responseObject) {
-		if (responseObject && ![responseObject isKindOfClass:[NSDictionary class]]) {
-            		if (failure)
-                		failure(operation, [NSError errorWithDomain:AFNetworkingErrorDomain code:NSURLErrorCannotParseResponse userInfo:nil]);
-            		return;
-	        }
+	AFHTTPRequestOperation *operation = [self HTTPRequestOperationWithRequest:request success:^(AFHTTPRequestOperation *operation, id responseObject)
+    {
+        NSLog(@"Response object: %@", [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding]);
+        if (responseObject)
+        {
+            if (![responseObject isKindOfClass:NSDictionary.class])
+            {
+                NSError *parseErr = nil;
+                responseObject = [DZXMLReader dictionaryForXMLData:responseObject error:&parseErr];
+                
+                if (parseErr)
+                {
+                    failure(operation,
+                            [NSError errorWithDomain:AFNetworkingErrorDomain
+                                                code:NSURLErrorCannotParseResponse
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                           @"Failed to parse response object.",
+                                                           @"parseError":parseErr}]);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            failure(operation,
+                    [NSError errorWithDomain:AFNetworkingErrorDomain
+                                        code:NSURLErrorCannotParseResponse
+                                    userInfo:nil]);
+            return;
+        }
         
 		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
         id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
@@ -112,6 +138,9 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
 		
 		NSDictionary *unformattedDict = [NSDictionary dictionaryWithObjects: objects forKeys: keys];
 		NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity: unformattedDict.count];
+        
+        NSLog(@"%@", request);
+        NSLog(@"%@", unformattedDict);
 		
 		[unformattedDict enumerateKeysAndObjectsUsingBlock:^(NSString *absoluteKey, NSDictionary *unformatted, BOOL *stop) {
 			// filter out Finder thumbnail files (._filename), they get us screwed up.
@@ -126,15 +155,23 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
 			// reformat the response dictionaries into usable values
 			NSMutableDictionary *object = [NSMutableDictionary dictionaryWithCapacity: 5];
 			
-			NSString *origCreationDate = [unformatted objectForKey: DZWebDAVCreationDateKey];
+            
+			NSString *origCreationDate = [unformatted objectForKey:DZWebDAVCreationDateKey];
             NSDate *creationDate = [NSDate dateFromRFC1123String: origCreationDate] ?: [NSDate dateFromISO8601String: origCreationDate] ?: nil;
 			
 			NSString *origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey] ?: [unformatted objectForKey: @"getlastmodified"];
 			NSDate *modificationDate = [NSDate dateFromRFC1123String: origModificationDate] ?: [NSDate dateFromISO8601String: origModificationDate] ?: nil;
 			
-			[object setObject: [unformatted objectForKey: DZWebDAVETagKey] forKey: DZWebDAVETagKey];
-			[object setObject: [unformatted objectForKey: DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
-			[object setObject: [unformatted objectForKey: DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
+            
+            if (unformatted[DZWebDAVETagKey])
+                [object setObject: unformatted[DZWebDAVETagKey] forKey: DZWebDAVETagKey];
+			
+            if (unformatted[DZWebDAVCTagKey])
+                [object setObject: unformatted[DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
+			
+            if (unformatted[DZWebDAVContentTypeKey])
+                [object setObject: unformatted[DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
+            
             [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
 			[object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
 			

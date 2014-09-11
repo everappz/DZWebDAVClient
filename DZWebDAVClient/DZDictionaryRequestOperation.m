@@ -27,7 +27,7 @@ static dispatch_queue_t xml_request_operation_processing_queue() {
 - (NSDictionary *)responseDictionary {
 	if (!_responseDictionary && self.responseData.length && self.isFinished) {
 		NSError *error = nil;
-		_responseDictionary = [DZXMLReader dictionaryForXMLParser: self.responseXMLParser error: &error];
+		_responseDictionary = [DZXMLReader dictionaryForXMLData:self.responseData error:&error];
 		_parseError = error;
 	}
 	return _responseDictionary;
