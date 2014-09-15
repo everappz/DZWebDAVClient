@@ -130,8 +130,8 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
             return;
         }
         
-		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
-        id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
+		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.D:propstat.D:prop"];
+        id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.D:href"];
 		
 		NSArray *objects = [checkItems isKindOfClass:[NSArray class]] ? checkItems : @[ checkItems ],
 		*keys = [checkHrefs isKindOfClass:[NSArray class]] ? checkHrefs : @[ checkHrefs ];
@@ -172,10 +172,14 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
             if (unformatted[DZWebDAVContentTypeKey])
                 [object setObject: unformatted[DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
             
-            [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
-			[object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
+            if (creationDate)
+                [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
+            
+            if (modificationDate)
+                [object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
 			
-			[dict setObject: object forKey: key];
+            if (object && key)
+                [dict setObject: object forKey: key];
 		}];
 		
 		if (success)
