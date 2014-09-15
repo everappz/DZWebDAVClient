@@ -33,15 +33,9 @@ NSString *const kXMLReaderTextNodeKey = @"text";
     return parser;
 }
 
-+ (NSDictionary *)prefixStrippedDictionaryWithDictionary:(NSDictionary *)dictionary
++ (NSMutableDictionary *)prefixStrippedDictionaryWithDictionary:(NSDictionary *)dictionary
 {
-    return [self prefixStrippedDictionaryWithDictionary:dictionary containingDictionary:nil];
-}
-
-+ (NSDictionary *)prefixStrippedDictionaryWithDictionary:(NSDictionary *)dictionary containingDictionary:(NSMutableDictionary *)mutatedDict
-{
-    if (!mutatedDict)
-        mutatedDict = [NSMutableDictionary dictionaryWithCapacity:dictionary.count];
+    NSMutableDictionary *mutatedDict = [NSMutableDictionary dictionaryWithCapacity:dictionary.count];
     
     for (id k in dictionary)
     {
@@ -52,13 +46,16 @@ NSString *const kXMLReaderTextNodeKey = @"text";
         
         if ([dictionary[k] isKindOfClass:NSDictionary.class])
         {
-            mutatedDict[modK] = [NSMutableDictionary dictionary];
-            [self prefixStrippedDictionaryWithDictionary:dictionary[k] containingDictionary:mutatedDict[modK]];
+            mutatedDict[modK] = [self prefixStrippedDictionaryWithDictionary:dictionary[k]];
         }
         if ([dictionary[k] isKindOfClass:NSArray.class])
         {
-            mutatedDict[modK] = [NSMutableArray array];
-            [self prefixStrippedArrayWithArray:dictionary[k] containingArray:mutatedDict[modK]];
+            mutatedDict[modK] = [self prefixStrippedArrayWithArray:dictionary[k]];
+        }
+        else if ([dictionary[k] isKindOfClass:NSString.class])
+        {
+            NSString * dictValue = dictionary[k];
+            mutatedDict[modK] = [dictValue stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
         }
         else
         {
@@ -100,35 +97,25 @@ NSString *const kXMLReaderTextNodeKey = @"text";
                                                                                                           error:error]]];
 }
 
-+ (NSArray *)prefixStrippedArrayWithArray:(NSArray *)array
++ (NSMutableArray *)prefixStrippedArrayWithArray:(NSArray *)array
 {
-    return [self prefixStrippedArrayWithArray:array containingArray:nil];
-}
-
-
-+ (NSArray *)prefixStrippedArrayWithArray:(NSArray *)array containingArray:(NSMutableArray *)mutatedArray
-{
-    if (!mutatedArray)
-        mutatedArray = [NSMutableArray arrayWithCapacity:array.count];
+    NSMutableArray *mutatedArray = [NSMutableArray arrayWithCapacity:array.count];
     
     for (id k in array)
     {
-        
-        // strip away prefix to the first ':' character
-        
         if ([k isKindOfClass:NSDictionary.class])
         {
-            NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+            NSMutableDictionary *dict = [self prefixStrippedDictionaryWithDictionary:k];
             [mutatedArray addObject:dict];
-            [self prefixStrippedDictionaryWithDictionary:k containingDictionary:dict];
         }
         else if ([k isKindOfClass:NSArray.class])
         {
-            NSMutableArray *modK = [NSMutableArray array];
-            [self prefixStrippedArrayWithArray:k containingArray:modK];
+            NSMutableArray *modK = [self prefixStrippedArrayWithArray:k];
+            [mutatedArray addObject:modK];
         }
         else
         {
+            // strip away prefix to the first ':' character
             id modK = [k stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
             [mutatedArray addObject:modK];
         }
