@@ -55,6 +55,11 @@ NSString *const kXMLReaderTextNodeKey = @"text";
             mutatedDict[modK] = [NSMutableDictionary dictionary];
             [self prefixStrippedDictionaryWithDictionary:dictionary[k] containingDictionary:mutatedDict[modK]];
         }
+        if ([dictionary[k] isKindOfClass:NSArray.class])
+        {
+            mutatedDict[modK] = [NSMutableArray array];
+            [self prefixStrippedArrayWithArray:dictionary[k] containingArray:mutatedDict[modK]];
+        }
         else
         {
             mutatedDict[modK] = dictionary[k];
@@ -94,6 +99,47 @@ NSString *const kXMLReaderTextNodeKey = @"text";
                                                                                                        encoding:NSUTF8StringEncoding
                                                                                                           error:error]]];
 }
+
++ (NSArray *)prefixStrippedArrayWithArray:(NSArray *)array
+{
+    return [self prefixStrippedArrayWithArray:array containingArray:nil];
+}
+
+
++ (NSArray *)prefixStrippedArrayWithArray:(NSArray *)array containingArray:(NSMutableArray *)mutatedArray
+{
+    if (!mutatedArray)
+        mutatedArray = [NSMutableArray arrayWithCapacity:array.count];
+    
+    for (id k in array)
+    {
+        
+        // strip away prefix to the first ':' character
+        
+        if ([k isKindOfClass:NSDictionary.class])
+        {
+            NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+            [mutatedArray addObject:dict];
+            [self prefixStrippedDictionaryWithDictionary:k containingDictionary:dict];
+        }
+        else if ([k isKindOfClass:NSArray.class])
+        {
+            NSMutableArray *modK = [NSMutableArray array];
+            [self prefixStrippedArrayWithArray:k containingArray:modK];
+        }
+        else
+        {
+            id modK = [k stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
+            [mutatedArray addObject:modK];
+        }
+    }
+    
+    return mutatedArray;
+}
+
+
+
+
 
 /*
 + (NSDictionary *)dictionaryForXMLParser:(NSXMLParser *)parser error:(NSError **)error {
