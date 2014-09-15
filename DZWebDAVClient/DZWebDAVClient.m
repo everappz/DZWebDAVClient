@@ -134,7 +134,13 @@ NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
         id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
         if (!checkItems || !checkHrefs)
+        {
+            failure(operation,
+                    [NSError errorWithDomain:AFNetworkingErrorDomain
+                                        code:NSURLErrorCannotParseResponse
+                                    userInfo:nil]);
             return;
+        }
 		
 		NSArray *objects = [checkItems isKindOfClass:[NSArray class]] ? checkItems : @[ checkItems ],
 		*keys = [checkHrefs isKindOfClass:[NSArray class]] ? checkHrefs : @[ checkHrefs ];
