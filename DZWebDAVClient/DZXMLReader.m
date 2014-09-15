@@ -48,14 +48,9 @@ NSString *const kXMLReaderTextNodeKey = @"text";
         {
             mutatedDict[modK] = [self prefixStrippedDictionaryWithDictionary:dictionary[k]];
         }
-        if ([dictionary[k] isKindOfClass:NSArray.class])
+        else if ([dictionary[k] isKindOfClass:NSArray.class])
         {
             mutatedDict[modK] = [self prefixStrippedArrayWithArray:dictionary[k]];
-        }
-        else if ([dictionary[k] isKindOfClass:NSString.class])
-        {
-            NSString * dictValue = dictionary[k];
-            mutatedDict[modK] = [dictValue stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
         }
         else
         {
