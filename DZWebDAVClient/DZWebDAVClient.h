@@ -25,6 +25,9 @@ extern NSString *DZWebDAVCreationDateKey;
 /** The key for last modification date of an entity. */
 extern NSString *DZWebDAVModificationDateKey;
 
+/** The content length of an entity. Only defined on collections. */
+extern NSString *DZWebDAVContentLengthKey;
+
 @class DZWebDAVLock;
 
 @interface DZWebDAVClient : AFHTTPClient

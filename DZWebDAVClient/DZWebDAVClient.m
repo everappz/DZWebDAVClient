@@ -16,6 +16,7 @@ NSString const *DZWebDAVETagKey             = @"getetag";
 NSString const *DZWebDAVCTagKey             = @"getctag";
 NSString const *DZWebDAVCreationDateKey     = @"creationdate";
 NSString const *DZWebDAVModificationDateKey = @"modificationdate";
+NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 
 @interface DZWebDAVClient()
 - (void)mr_listPath:(NSString *)path depth:(NSUInteger)depth success:(void(^)(AFHTTPRequestOperation *, id))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure;
@@ -130,8 +131,10 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
             return;
         }
         
-		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.D:propstat.D:prop"];
-        id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.D:href"];
+		id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
+        id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
+        if (!checkItems || !checkHrefs)
+            return;
 		
 		NSArray *objects = [checkItems isKindOfClass:[NSArray class]] ? checkItems : @[ checkItems ],
 		*keys = [checkHrefs isKindOfClass:[NSArray class]] ? checkHrefs : @[ checkHrefs ];
@@ -159,9 +162,10 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
 			NSString *origCreationDate = [unformatted objectForKey:DZWebDAVCreationDateKey];
             NSDate *creationDate = [NSDate dateFromRFC1123String: origCreationDate] ?: [NSDate dateFromISO8601String: origCreationDate] ?: nil;
 			
-			NSString *origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey] ?: [unformatted objectForKey: @"getlastmodified"];
+			NSString *origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey];
 			NSDate *modificationDate = [NSDate dateFromRFC1123String: origModificationDate] ?: [NSDate dateFromISO8601String: origModificationDate] ?: nil;
 			
+			NSNumber *contentLength = [unformatted objectForKey: DZWebDAVContentLengthKey];
             
             if (unformatted[DZWebDAVETagKey])
                 [object setObject: unformatted[DZWebDAVETagKey] forKey: DZWebDAVETagKey];
@@ -177,6 +181,9 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
             
             if (modificationDate)
                 [object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
+            
+            if (contentLength)
+                [object setObject: contentLength forKey: DZWebDAVContentLengthKey];
 			
             if (object && key)
                 [dict setObject: object forKey: key];
