@@ -89,6 +89,7 @@ NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 
 - (void)mr_listPath:(NSString *)path depth:(NSUInteger)depth success:(void(^)(AFHTTPRequestOperation *, id))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure {
 	NSParameterAssert(success);
+    __block NSString *remotePath = path; // retain path
 	NSMutableURLRequest *request = [self requestWithMethod:@"PROPFIND" path:path parameters:nil];
 	NSString *depthHeader = nil;
 	if (depth <= 0)
@@ -156,6 +157,12 @@ NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 			if ([absoluteKey.lastPathComponent hasPrefix: @"._"])
 				return;
 			
+            // filter out this directory
+            if ([absoluteKey isEqualToString:remotePath])
+            {
+                return;
+            }
+            
 			// Replace an absolute path with a relative one
 			NSString *key = [absoluteKey stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
 			if ([[key substringToIndex:1] isEqualToString:@"/"])
