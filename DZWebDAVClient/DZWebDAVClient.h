@@ -269,4 +269,17 @@ extern NSString *DZWebDAVContentLengthKey;
        success:(void(^)(void))success
        failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
 
+/**
+ Enqueues a generic request defined by the user. You need to define a connection that can handle it, probably a custom subclass
+ 
+ @param method The name of the method. Don't use usual webserver method names
+ @param dictionary  A dictionary with parameters that the server can parse
+ @param success A block callback, to be fired upon successful completion, with no arguments.
+ @param failure A block callback, to be fired upon the failure of the request, with two arguments: the request operation and the network error that occurred.
+ */
+- (void)makeRequestWithMethodName:(NSString *)methodName
+                       parameters:(NSDictionary *)params
+               success:(void(^)(void))success
+               failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+
 @end
