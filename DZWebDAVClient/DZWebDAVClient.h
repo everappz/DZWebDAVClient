@@ -279,7 +279,7 @@ extern NSString *DZWebDAVContentLengthKey;
  */
 - (void)makeRequestWithMethodName:(NSString *)methodName
                        parameters:(NSDictionary *)params
-               success:(void(^)(void))success
-               failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+                          success:(void(^)(AFHTTPRequestOperation *operation, id responseObject))success
+                          failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
 
 @end
