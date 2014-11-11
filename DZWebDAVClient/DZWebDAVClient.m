@@ -309,11 +309,12 @@ NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 }
 
 - (void)makeRequestWithMethodName:(NSString *)methodName
+                           atPath:(NSString *)path
                        parameters:(NSDictionary *)params
                           success:(void(^)(AFHTTPRequestOperation *operation, id responseObject))success
                           failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
 {
-    NSURLRequest *request = [self requestWithMethod:methodName path:@"" parameters:params];
+    NSURLRequest *request = [self requestWithMethod:methodName path:path parameters:params];
     AFHTTPRequestOperation *operation =  [self HTTPRequestOperationWithRequest:request success:success failure:failure];
     [self enqueueHTTPRequestOperation:operation];
 }

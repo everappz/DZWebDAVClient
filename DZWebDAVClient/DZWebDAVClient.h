@@ -278,6 +278,7 @@ extern NSString *DZWebDAVContentLengthKey;
  @param failure A block callback, to be fired upon the failure of the request, with two arguments: the request operation and the network error that occurred.
  */
 - (void)makeRequestWithMethodName:(NSString *)methodName
+                           atPath:(NSString *)path
                        parameters:(NSDictionary *)params
                           success:(void(^)(AFHTTPRequestOperation *operation, id responseObject))success
                           failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
