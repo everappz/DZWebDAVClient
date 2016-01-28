@@ -8,7 +8,7 @@
 //  Licensed under MIT. See LICENSE.
 //
 
-#import "AFXMLRequestOperation.h"
+@import AFNetworking.AFXMLRequestOperation;
 
 /**
  `DZDictionaryRequestOperation` is a subclass of `AFXMLRequestOperation` for downloading and working with XML response data as an NSDictionary.
