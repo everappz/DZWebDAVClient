@@ -8,7 +8,7 @@
 //  Licensed under MIT. See LICENSE.
 //
 
-#import <AFNetworking/AFNetworking.h>
+@import AFNetworking.AFHTTPClient;
 
 /** The key for a uniform (MIME) type identifier returned from the property request methods. */
 extern NSString *DZWebDAVContentTypeKey;
