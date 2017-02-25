@@ -128,30 +128,13 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     [request setHTTPBody:[@"<?xml version=\"1.0\" encoding=\"utf-8\" ?><D:propfind xmlns:D=\"DAV:\"><D:allprop/></D:propfind>" dataUsingEncoding:NSUTF8StringEncoding]];
     [request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
 
-    
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:^(id responseObject) {
         
-        if (responseObject){
-            if (![responseObject isKindOfClass:NSDictionary.class]){
-                NSError *parseErr = nil;
-                responseObject = [DZXMLReader dictionaryForXMLData:responseObject error:&parseErr];
-                if (parseErr){
-                    if(failure){
-                        failure([NSError errorWithDomain:AFURLResponseSerializationErrorDomain
-                                                    code:NSURLErrorCannotParseResponse
-                                                userInfo:@{NSLocalizedDescriptionKey:
-                                                               @"Failed to parse response object.",
-                                                               @"parseError":parseErr}]);
-                    }
-                    return;
-                }
-            }
-        }
-        else{
+        if (![responseObject isKindOfClass:[NSDictionary class]]){
             if(failure){
                 failure([NSError errorWithDomain:AFURLResponseSerializationErrorDomain
-                                        code:NSURLErrorCannotParseResponse
-                                    userInfo:nil]);
+                                            code:NSURLErrorCannotParseResponse
+                                        userInfo:nil]);
             }
             return;
         }
