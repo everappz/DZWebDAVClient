@@ -8,6 +8,7 @@
 
 #import "DZWebDAVLock.h"
 
+
 @implementation DZWebDAVLock
 
 @synthesize exclusive = _exclusive, recursive = _recursive, timeout = _timeout, token = _token;
@@ -26,24 +27,35 @@
 - (id)initWithURL:(NSURL *)URL responseObject:(id)object {
     if ((self = [super init])) {
         _URL = URL;
-        _exclusive = !![object valueForKey: @"exclusive"];
-        _recursive = [[object valueForKey: @"depth"] isEqualToString: @"Infinity"];
-        _timeout = [[[[object valueForKey: @"timeout"] componentsSeparatedByString:@"-"] lastObject] floatValue];
-        _token = [[object valueForKey: @"locktoken"] copy];
+        NSParameterAssert([object respondsToSelector:@selector(valueForKey:)]);
+        if([object respondsToSelector:@selector(valueForKey:)]){
+            _exclusive = !![object valueForKey: @"exclusive"];
+            _recursive = [[object valueForKey: @"depth"] isEqualToString: @"Infinity"];
+            _timeout = [[[[object valueForKey: @"timeout"] componentsSeparatedByString:@"-"] lastObject] floatValue];
+            _token = [[object valueForKey: @"locktoken"] copy];
+        }
     }
     return self;
 }
 
 - (id)updateFromResponseObject:(id)object {
-    if ([object valueForKey: @"exclusive"])
-        _exclusive = YES;
-    if ([object valueForKey: @"depth"])
-        _recursive = [[object valueForKey: @"depth"] isEqualToString: @"Infinity"];
-    if ([object valueForKey: @"timeout"])
-        _timeout = [[[[object valueForKey: @"timeout"] componentsSeparatedByString:@"-"] lastObject] floatValue];
-    if ([object valueForKey: @"locktoken"])
-        _token = [[object valueForKey: @"locktoken"] copy];
-    return object;
+    NSParameterAssert([object respondsToSelector:@selector(valueForKey:)]);
+    if([object respondsToSelector:@selector(valueForKey:)]){
+
+        DZWebDAVLock *updatedLock = [[[self class] alloc] init];
+        updatedLock->_URL = [_URL copy];
+        
+        if ([object valueForKey: @"exclusive"])
+            updatedLock->_exclusive = YES;
+        if ([object valueForKey: @"depth"])
+            updatedLock->_recursive = [[object valueForKey: @"depth"] isEqualToString: @"Infinity"];
+        if ([object valueForKey: @"timeout"])
+            updatedLock->_timeout = [[[[object valueForKey: @"timeout"] componentsSeparatedByString:@"-"] lastObject] floatValue];
+        if ([object valueForKey: @"locktoken"])
+            updatedLock->_token = [[object valueForKey: @"locktoken"] copy];
+        return updatedLock;
+    }
+    return nil;
 }
 
 - (id)copyWithZone:(NSZone *)zone {

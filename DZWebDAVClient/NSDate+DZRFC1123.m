@@ -3,7 +3,7 @@
 //  DZWebDAVClient
 //
 
-#import "NSDate+RFC1123.h"
+#import "NSDate+DZRFC1123.h"
 
 static NSDateFormatter *RFC1123Formatter(void) {
 	static NSDateFormatter *formatter = nil;
@@ -41,16 +41,16 @@ static NSDateFormatter *ASCTimeFormatter(void) {
 	return formatter;
 }
 
-@implementation NSDate (RFC1123)
+@implementation NSDate (DZRFC1123)
 
-+ (NSDate *)dateFromRFC1123String:(NSString *)value {
++ (NSDate *)dateFromDZRFC1123String:(NSString *)value {
     if (!value.length)
         return nil;
 	
 	return [RFC1123Formatter() dateFromString: value] ?: [RFC850Formatter() dateFromString: value] ?: [ASCTimeFormatter() dateFromString: value];
 }
 
-- (NSString *)RFC1123String {
+- (NSString *)DZRFC1123String {
 	return [RFC1123Formatter() stringFromDate: self];
 }
 
