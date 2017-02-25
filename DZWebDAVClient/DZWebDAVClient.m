@@ -17,6 +17,7 @@ NSString const *DZWebDAVETagKey             = @"getetag";
 NSString const *DZWebDAVCTagKey             = @"getctag";
 NSString const *DZWebDAVCreationDateKey     = @"creationdate";
 NSString const *DZWebDAVModificationDateKey = @"modificationdate";
+NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 
 
 const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
@@ -168,6 +169,11 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             if ([absoluteKey.lastPathComponent hasPrefix: @"._"])
                 return;
             
+            // filter out this directory
+            if ([absoluteKey isEqualToString:path]){
+                return;
+            }
+            
             // Replace an absolute path with a relative one
             NSString *key = [absoluteKey stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
             if ([[key substringToIndex:1] isEqualToString:@"/"])
@@ -179,20 +185,35 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             NSString *origCreationDate = [unformatted objectForKey: DZWebDAVCreationDateKey];
             NSDate *creationDate = [NSDate dateFromDZRFC1123String: origCreationDate] ?: [[[DZISO8601DateFormatter alloc] init] dateFromString: origCreationDate] ?: nil;
             
+            NSNumber *contentLength = [unformatted objectForKey: DZWebDAVContentLengthKey];
             NSString *origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey] ?: [unformatted objectForKey: @"getlastmodified"];
             NSDate *modificationDate = [NSDate dateFromDZRFC1123String: origModificationDate] ?: [[[DZISO8601DateFormatter alloc] init] dateFromString: origModificationDate] ?: nil;
             
-            [object setObject: [unformatted objectForKey: DZWebDAVETagKey] forKey: DZWebDAVETagKey];
-            [object setObject: [unformatted objectForKey: DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
-            [object setObject: [unformatted objectForKey: DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
+            if (unformatted[DZWebDAVETagKey]){
+                [object setObject: unformatted[DZWebDAVETagKey] forKey: DZWebDAVETagKey];
+            }
+            
+            if (unformatted[DZWebDAVCTagKey]){
+                [object setObject: unformatted[DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
+            }
+            
+            if (unformatted[DZWebDAVContentTypeKey]){
+                [object setObject: unformatted[DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
+            }
+
             if (creationDate) {
                 [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
             }
             if (modificationDate) {
                 [object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
             }
+            if (contentLength){
+                [object setObject: contentLength forKey: DZWebDAVContentLengthKey];
+            }
             
-            [dict setObject: object forKey: key];
+            if (object && key){
+                [dict setObject: object forKey: key];
+            }
         }];
         
         if (success){
@@ -348,5 +369,18 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
     return task;
 }
+
+
+- (NSURLSessionDataTask *)makeRequestWithMethodName:(NSString *)methodName
+                                             atPath:(NSString *)path
+                                         parameters:(NSDictionary *)params
+                                            success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                            failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+    NSURLRequest *request = [self requestWithMethod:methodName path:path parameters:params];
+    NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
+    return task;
+    
+}                                 
+
 
 @end
