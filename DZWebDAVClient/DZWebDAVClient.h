@@ -25,9 +25,6 @@ extern NSString *DZWebDAVCreationDateKey;
 /** The key for last modification date of an entity. */
 extern NSString *DZWebDAVModificationDateKey;
 
-/** The content length of an entity. Only defined on collections. */
-extern NSString *DZWebDAVContentLengthKey;
-
 @class DZWebDAVLock;
 
 
@@ -233,19 +230,5 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
 - (NSURLSessionDataTask *)unlock:(DZWebDAVLock *)lock
        success:(DZWebDAVClientDataTaskSuccessBlock)success
        failure:(DZWebDAVClientDataTaskErrorBlock)failure;
-
-/**
- Enqueues a generic request defined by the user. You need to define a connection that can handle it, probably a custom subclass
- 
- @param method The name of the method. Don't use usual webserver method names
- @param dictionary  A dictionary with parameters that the server can parse
- @param success A block callback, to be fired upon successful completion, with no arguments.
- @param failure A block callback, to be fired upon the failure of the request, with two arguments: the request operation and the network error that occurred.
- */
-- (NSURLSessionDataTask *)makeRequestWithMethodName:(NSString *)methodName
-                           atPath:(NSString *)path
-                       parameters:(NSDictionary *)params
-                          success:(DZWebDAVClientDataTaskSuccessBlock)success
-                          failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
 @end

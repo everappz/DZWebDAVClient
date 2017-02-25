@@ -19,8 +19,7 @@
 + (NSDictionary *)dictionaryForXMLString:(NSString *)string error:(NSError **)error;
 + (NSDictionary *)dictionaryForXMLFileAtPath:(NSString *)path error:(NSError **)error;
 + (NSDictionary *)dictionaryForXMLFileAtURL:(NSURL *)URL error:(NSError **)error;
-
-//+ (NSDictionary *)dictionaryForXMLParser:(NSXMLParser *)parser error:(NSError **)error;
++ (NSDictionary *)dictionaryForXMLParser:(NSXMLParser *)parser error:(NSError **)error;
 
 - (id)initWithParser:(NSXMLParser *)parser;
 

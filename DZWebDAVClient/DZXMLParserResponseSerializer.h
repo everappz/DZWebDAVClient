@@ -8,7 +8,7 @@
 
 #import <AFNetworking/AFNetworking.h>
 
-@interface DZXMLParserResponseSerializer : AFHTTPResponseSerializer
+@interface DZXMLParserResponseSerializer : AFXMLParserResponseSerializer
 
 
 @end
