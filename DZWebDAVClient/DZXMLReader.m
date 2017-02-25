@@ -5,6 +5,10 @@
 
 #import "DZXMLReader.h"
 
+#import "XMLDictionary.h"
+
+#import "RegexKitLite.h"
+
 NSString *const kXMLReaderTextNodeKey = @"text";
 
 @interface DZXMLReader () <NSXMLParserDelegate>
@@ -21,26 +25,105 @@ NSString *const kXMLReaderTextNodeKey = @"text";
 
 #pragma mark - Public methods
 
++ (XMLDictionaryParser *)XMLParser
+{
+    XMLDictionaryParser *parser = [[XMLDictionaryParser alloc] init];
+    parser.attributesMode = XMLDictionaryAttributesModeDiscard;
+    parser.wrapRootNode = YES;
+    return parser;
+}
+
++ (NSMutableDictionary *)prefixStrippedDictionaryWithDictionary:(NSDictionary *)dictionary
+{
+    NSMutableDictionary *mutatedDict = [NSMutableDictionary dictionaryWithCapacity:dictionary.count];
+    
+    for (id k in dictionary)
+    {
+        NSParameterAssert([k isKindOfClass:NSString.class]);
+        
+        // strip away prefix to the first ':' character
+        id modK = [k stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
+        
+        if ([dictionary[k] isKindOfClass:NSDictionary.class])
+        {
+            mutatedDict[modK] = [self prefixStrippedDictionaryWithDictionary:dictionary[k]];
+        }
+        else if ([dictionary[k] isKindOfClass:NSArray.class])
+        {
+            mutatedDict[modK] = [self prefixStrippedArrayWithArray:dictionary[k]];
+        }
+        else
+        {
+            mutatedDict[modK] = dictionary[k];
+        }
+    }
+    
+    return mutatedDict;
+}
+
 + (NSDictionary *)dictionaryForXMLData:(NSData *)data error:(NSError **)error {
-	NSXMLParser *parser = [[NSXMLParser alloc] initWithData:data];
-	return [self dictionaryForXMLParser: parser error: error];
+	//NSXMLParser *parser = [[NSXMLParser alloc] initWithData:data];
+	//return [self dictionaryForXMLParser: parser error: error];
+    
+    return [self prefixStrippedDictionaryWithDictionary:[[self XMLParser] dictionaryWithData:data]];
 }
 
 + (NSDictionary *)dictionaryForXMLString:(NSString *)string error:(NSError **)error {
-    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
-    return [DZXMLReader dictionaryForXMLData:data error:error];
+    //NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    //return [DZXMLReader dictionaryForXMLData:data error:error];
+    
+    return [self prefixStrippedDictionaryWithDictionary:[[self XMLParser] dictionaryWithString:string]];
 }
 
 + (NSDictionary *)dictionaryForXMLFileAtPath:(NSString *)path error:(NSError **)error {
-    NSData *data = [NSData dataWithContentsOfFile:path options:0 error:error];
-    return [DZXMLReader dictionaryForXMLData:data error:error];
+    //NSData *data = [NSData dataWithContentsOfFile:path options:0 error:error];
+    //return [DZXMLReader dictionaryForXMLData:data error:error];
+    
+    return [self prefixStrippedDictionaryWithDictionary:[[self XMLParser] dictionaryWithFile:path]];
 }
 
 + (NSDictionary *)dictionaryForXMLFileAtURL:(NSURL *)URL error:(NSError **)error {
-	NSData *data = [NSData dataWithContentsOfURL:URL options:0 error:error];
-    return [DZXMLReader dictionaryForXMLData:data error:error];
+	//NSData *data = [NSData dataWithContentsOfURL:URL options:0 error:error];
+    //return [DZXMLReader dictionaryForXMLData:data error:error];
+    
+    return [self prefixStrippedDictionaryWithDictionary:[[self XMLParser]
+                                                         dictionaryWithString:[NSString stringWithContentsOfURL:URL
+                                                                                                       encoding:NSUTF8StringEncoding
+                                                                                                          error:error]]];
 }
 
++ (NSMutableArray *)prefixStrippedArrayWithArray:(NSArray *)array
+{
+    NSMutableArray *mutatedArray = [NSMutableArray arrayWithCapacity:array.count];
+    
+    for (id k in array)
+    {
+        if ([k isKindOfClass:NSDictionary.class])
+        {
+            NSMutableDictionary *dict = [self prefixStrippedDictionaryWithDictionary:k];
+            [mutatedArray addObject:dict];
+        }
+        else if ([k isKindOfClass:NSArray.class])
+        {
+            NSMutableArray *modK = [self prefixStrippedArrayWithArray:k];
+            [mutatedArray addObject:modK];
+        }
+        else
+        {
+            // strip away prefix to the first ':' character
+            id modK = [k stringByReplacingOccurrencesOfRegex:@"^.*:" withString:@""];
+            [mutatedArray addObject:modK];
+        }
+    }
+    
+    return mutatedArray;
+}
+
+
+
+
+
+/*
 + (NSDictionary *)dictionaryForXMLParser:(NSXMLParser *)parser error:(NSError **)error {
     DZXMLReader *reader = [[DZXMLReader alloc] initWithParser: parser];
 	BOOL success = [reader parse];
@@ -49,7 +132,7 @@ NSString *const kXMLReaderTextNodeKey = @"text";
 	else if (error)
 		*error = reader.error;
 	return nil;
-}
+}*/
 
 #pragma mark - Parsing
 

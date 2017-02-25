@@ -12,11 +12,14 @@
 
 
 
+#import "DZXMLReader.h"
+
 NSString const *DZWebDAVContentTypeKey      = @"getcontenttype";
 NSString const *DZWebDAVETagKey             = @"getetag";
 NSString const *DZWebDAVCTagKey             = @"getctag";
 NSString const *DZWebDAVCreationDateKey     = @"creationdate";
 NSString const *DZWebDAVModificationDateKey = @"modificationdate";
+NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 
 
 const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
@@ -35,6 +38,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 
 @synthesize fileManager = _fileManager;
 
+<<<<<<< HEAD
 - (instancetype)initWithBaseURL:(NSURL *)url{
     NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     configuration.HTTPMaximumConnectionsPerHost = 5;
@@ -55,6 +59,12 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         self.fileManager = [NSFileManager new];
+=======
+- (id)initWithBaseURL:(NSURL *)url {
+    if ((self = [super initWithBaseURL:url])) {
+		self.fileManager = [NSFileManager new];
+        [self registerHTTPOperationClass:[DZDictionaryRequestOperation class]];
+>>>>>>> d997c55528112d8562129dc864ae222ab1c1c424
     }
     return self;
 }
@@ -120,6 +130,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 
 - (NSURLSessionDataTask *)mr_listPath:(NSString *)path depth:(NSUInteger)depth success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure{
 	NSParameterAssert(success);
+    __block NSString *remotePath = path; // retain path
 	NSMutableURLRequest *request = [self requestWithMethod:@"PROPFIND" path:path parameters:nil];
 	NSString *depthHeader = nil;
 	if (depth <= 0)
@@ -131,6 +142,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     [request setValue: depthHeader forHTTPHeaderField: @"Depth"];
     [request setHTTPBody:[@"<?xml version=\"1.0\" encoding=\"utf-8\" ?><D:propfind xmlns:D=\"DAV:\"><D:allprop/></D:propfind>" dataUsingEncoding:NSUTF8StringEncoding]];
     [request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
+<<<<<<< HEAD
     
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:^(id responseObject) {
         
@@ -138,11 +150,42 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             if (failure){
                 failure([NSError errorWithDomain:AFURLResponseSerializationErrorDomain code:NSURLErrorCannotParseResponse userInfo:nil]);
             }
+=======
+	AFHTTPRequestOperation *operation = [self HTTPRequestOperationWithRequest:request success:^(AFHTTPRequestOperation *operation, id responseObject)
+    {
+        NSLog(@"Response object: %@", [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding]);
+        if (responseObject)
+        {
+            if (![responseObject isKindOfClass:NSDictionary.class])
+            {
+                NSError *parseErr = nil;
+                responseObject = [DZXMLReader dictionaryForXMLData:responseObject error:&parseErr];
+                
+                if (parseErr)
+                {
+                    failure(operation,
+                            [NSError errorWithDomain:AFNetworkingErrorDomain
+                                                code:NSURLErrorCannotParseResponse
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                           @"Failed to parse response object.",
+                                                           @"parseError":parseErr}]);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            failure(operation,
+                    [NSError errorWithDomain:AFNetworkingErrorDomain
+                                        code:NSURLErrorCannotParseResponse
+                                    userInfo:nil]);
+>>>>>>> d997c55528112d8562129dc864ae222ab1c1c424
             return;
         }
         
         id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
         id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
+<<<<<<< HEAD
         
         NSArray *objects = nil;
         if ([checkItems isKindOfClass:[NSArray class]]) {
@@ -224,6 +267,95 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
              success:(DZWebDAVClientDataTaskSuccessBlock)success
             progress:(DZWebDAVClientDataTaskProgressBlock)progress
              failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+=======
+        if (!checkItems || !checkHrefs)
+        {
+            failure(operation,
+                    [NSError errorWithDomain:AFNetworkingErrorDomain
+                                        code:NSURLErrorCannotParseResponse
+                                    userInfo:nil]);
+            return;
+        }
+		
+		NSArray *objects = [checkItems isKindOfClass:[NSArray class]] ? checkItems : @[ checkItems ],
+		*keys = [checkHrefs isKindOfClass:[NSArray class]] ? checkHrefs : @[ checkHrefs ];
+		
+		NSDictionary *unformattedDict = [NSDictionary dictionaryWithObjects: objects forKeys: keys];
+		NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity: unformattedDict.count];
+        
+        NSLog(@"%@", request);
+        NSLog(@"%@", unformattedDict);
+		
+		[unformattedDict enumerateKeysAndObjectsUsingBlock:^(NSString *absoluteKey, NSDictionary *unformatted, BOOL *stop) {
+			// filter out Finder thumbnail files (._filename), they get us screwed up.
+			if ([absoluteKey.lastPathComponent hasPrefix: @"._"])
+				return;
+			
+            // filter out this directory
+            if ([absoluteKey isEqualToString:remotePath])
+            {
+                return;
+            }
+            
+			// Replace an absolute path with a relative one
+			NSString *key = [absoluteKey stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
+			if ([[key substringToIndex:1] isEqualToString:@"/"])
+				key = [key substringFromIndex:1];
+			
+			// reformat the response dictionaries into usable values
+			NSMutableDictionary *object = [NSMutableDictionary dictionaryWithCapacity: 5];
+			
+            
+			NSString *origCreationDate = [unformatted objectForKey:DZWebDAVCreationDateKey];
+            NSDate *creationDate = [NSDate dateFromRFC1123String: origCreationDate] ?: [NSDate dateFromISO8601String: origCreationDate] ?: nil;
+			
+			NSString *origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey];
+			NSDate *modificationDate = [NSDate dateFromRFC1123String: origModificationDate] ?: [NSDate dateFromISO8601String: origModificationDate] ?: nil;
+			
+			NSNumber *contentLength = [unformatted objectForKey: DZWebDAVContentLengthKey];
+            
+            if (unformatted[DZWebDAVETagKey])
+                [object setObject: unformatted[DZWebDAVETagKey] forKey: DZWebDAVETagKey];
+			
+            if (unformatted[DZWebDAVCTagKey])
+                [object setObject: unformatted[DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
+			
+            if (unformatted[DZWebDAVContentTypeKey])
+                [object setObject: unformatted[DZWebDAVContentTypeKey] ?: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
+            
+            if (creationDate)
+                [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
+            
+            if (modificationDate)
+                [object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
+            
+            if (contentLength)
+                [object setObject: contentLength forKey: DZWebDAVContentLengthKey];
+			
+            if (object && key)
+                [dict setObject: object forKey: key];
+		}];
+		
+		if (success)
+			success(operation, dict);
+	} failure:failure];
+	[self enqueueHTTPRequestOperation:operation];
+}
+
+- (void)propertiesOfPath:(NSString *)path success:(void(^)(AFHTTPRequestOperation *, id ))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure {
+	[self mr_listPath:path depth:0 success:success failure:failure];
+}
+
+- (void)listPath:(NSString *)path success:(void(^)(AFHTTPRequestOperation *, id))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure {
+	[self mr_listPath:path depth:1 success:success failure:failure];
+}
+
+- (void)recursiveListPath:(NSString *)path success:(void(^)(AFHTTPRequestOperation *, id))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure {
+	[self mr_listPath:path depth:2 success:success failure:failure];
+}
+
+- (void)downloadPath:(NSString *)remoteSource toURL:(NSURL *)localDestination success:(void(^)(void))success failure:(void(^)(AFHTTPRequestOperation *, NSError *))failure {
+>>>>>>> d997c55528112d8562129dc864ae222ab1c1c424
 	if ([self.fileManager respondsToSelector:@selector(createDirectoryAtURL:withIntermediateDirectories:attributes:error:) ]) {
 		[self.fileManager createDirectoryAtURL: [localDestination URLByDeletingLastPathComponent] withIntermediateDirectories: YES attributes: nil error: NULL];
 	} else {
@@ -348,5 +480,17 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
     return task;
 }
+
+- (void)makeRequestWithMethodName:(NSString *)methodName
+                           atPath:(NSString *)path
+                       parameters:(NSDictionary *)params
+                          success:(void(^)(AFHTTPRequestOperation *operation, id responseObject))success
+                          failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+{
+    NSURLRequest *request = [self requestWithMethod:methodName path:path parameters:params];
+    AFHTTPRequestOperation *operation =  [self HTTPRequestOperationWithRequest:request success:success failure:failure];
+    [self enqueueHTTPRequestOperation:operation];
+}
+
 
 @end
