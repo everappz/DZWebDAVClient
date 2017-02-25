@@ -28,11 +28,20 @@ extern NSString *DZWebDAVModificationDateKey;
 /** The content length of an entity. Only defined on collections. */
 extern NSString *DZWebDAVContentLengthKey;
 
+/** The key for a href returned from the property request methods. */
+extern NSString *DZWebDAVHrefKey;
+
+/** The key for directories returned from the property request methods. */
+extern NSString *DZWebDAVCollectionKey;
+
+
 
 @class DZWebDAVLock;
 
 
 typedef void(^DZWebDAVClientDataTaskSuccessBlock)(id responseObject);
+typedef void(^DZWebDAVClientDataTaskDidReceiveDataBlock)(NSData *data);
+typedef void(^DZWebDAVClientDataTaskDidReceiveResponseBlock)(NSURLResponse *response);
 typedef void(^DZWebDAVClientDataTaskErrorBlock)(NSError *error);
 typedef void(^DZWebDAVClientDataLockTaskSuccessBlock)(DZWebDAVLock *lock);
 typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
@@ -252,6 +261,14 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
                                          parameters:(NSDictionary *)params
                                             success:(DZWebDAVClientDataTaskSuccessBlock)success
                                             failure:(DZWebDAVClientDataTaskErrorBlock)failure;
+
+- (NSURLSessionDataTask *)makeGETRequestAtPath:(NSString *)path
+                                    parameters:(NSDictionary *)params
+                             additionalHeaders:(NSDictionary *)additionalHeaders
+                                       success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                didReceiveData:(DZWebDAVClientDataTaskDidReceiveDataBlock)didReceiveData
+                            didReceiveResponse:(DZWebDAVClientDataTaskDidReceiveResponseBlock)didReceiveResponse
+                                       failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
 
 
