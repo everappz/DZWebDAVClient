@@ -8,11 +8,7 @@
 //  Licensed under MIT. See LICENSE.
 //
 
-<<<<<<< HEAD
 #import <AFNetworking/AFNetworking.h>
-=======
-@import AFNetworking.AFHTTPClient;
->>>>>>> d997c55528112d8562129dc864ae222ab1c1c424
 
 /** The key for a uniform (MIME) type identifier returned from the property request methods. */
 extern NSString *DZWebDAVContentTypeKey;
@@ -246,10 +242,10 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
  @param success A block callback, to be fired upon successful completion, with no arguments.
  @param failure A block callback, to be fired upon the failure of the request, with two arguments: the request operation and the network error that occurred.
  */
-- (void)makeRequestWithMethodName:(NSString *)methodName
+- (NSURLSessionDataTask *)makeRequestWithMethodName:(NSString *)methodName
                            atPath:(NSString *)path
                        parameters:(NSDictionary *)params
-                          success:(void(^)(AFHTTPRequestOperation *operation, id responseObject))success
-                          failure:(void(^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+                          success:(DZWebDAVClientDataTaskSuccessBlock)success
+                          failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
 @end
