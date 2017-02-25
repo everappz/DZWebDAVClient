@@ -13,6 +13,8 @@
 
 #import <Foundation/Foundation.h>
 
+extern NSString *const kXMLReaderTextNodeKey;
+
 @interface DZXMLReader : NSObject
 
 + (NSDictionary *)dictionaryForXMLData:(NSData *)data error:(NSError **)error;

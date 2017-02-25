@@ -56,12 +56,76 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         self.fileManager = [NSFileManager new];
+        
+        __weak typeof (self) weakSelf = self;
+        
+        [self setSessionDidReceiveAuthenticationChallengeBlock:^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable cred) {
+            
+            NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+            NSURLCredential *credential = nil;
+            
+            if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+                if ([weakSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                    credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                    if (credential) {
+                        disposition = NSURLSessionAuthChallengeUseCredential;
+                    } else {
+                        disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                    }
+                } else {
+                    disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+                }
+            } else {
+                if (weakSelf.credential) {
+                    credential = weakSelf.credential;
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            }
+            
+            if(cred){
+                *cred = credential;
+            }
+            
+            return disposition;
+            
+        }];
+        
+        
+        [self setTaskDidReceiveAuthenticationChallengeBlock:^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLSessionTask * _Nonnull task, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable cred) {
+            
+            NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+            NSURLCredential *credential = nil;
+            
+            if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+                if ([weakSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                    credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                } else {
+                    disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+                }
+            } else {
+                if (weakSelf.credential) {
+                    credential = weakSelf.credential;
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            }
+            
+            if(cred){
+                *cred = credential;
+            }
+            
+            return disposition;
+        }];
+        
     }
     return self;
 }
 
 - (NSURLSessionDataTask *)mr_dataTaskWithRequest:(NSURLRequest *)request success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
-   
     NSURLSessionDataTask *task = [self dataTaskWithRequest:request uploadProgress:nil downloadProgress:nil completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
         if(error!=nil){
             if(failure){
@@ -74,8 +138,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             }
         }
     }];
+    [task resume];
     return task;
-    
 }
 
 - (NSMutableURLRequest *)requestWithMethod:(NSString *)method path:(NSString *)path parameters:(NSDictionary *)parameters {
@@ -266,6 +330,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             }
         }
     }];
+    [downloadTask resume];
     return downloadTask;
 }
 
@@ -298,6 +363,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             }
         }
     }];
+    [uploadTask resume];
     return uploadTask;
 }
 
@@ -319,6 +385,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             }
         }
     }];
+    [uploadTask resume];
     return uploadTask;
 }
 

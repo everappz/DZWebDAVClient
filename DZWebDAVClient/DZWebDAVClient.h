@@ -40,6 +40,9 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
 
 @interface DZWebDAVClient : AFHTTPSessionManager
 
+
+@property (nonatomic,strong)NSURLCredential *credential;
+
 /**
  Enqueues an operation to copy the object at a path to another path using a `COPY` request.
  

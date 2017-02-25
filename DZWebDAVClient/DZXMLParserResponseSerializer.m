@@ -33,8 +33,7 @@
     id responseObject = [super responseObjectForResponse:response data:data error:error];
     if([responseObject isKindOfClass:[NSXMLParser class]]){
         NSXMLParser *responseXMLParser = (NSXMLParser *)responseObject;
-        NSError *error = nil;
-        NSDictionary *responseDictionary = [DZXMLReader dictionaryForXMLParser: responseXMLParser error: &error];
+        NSDictionary *responseDictionary = [DZXMLReader dictionaryForXMLParser: responseXMLParser error:error];
         return responseDictionary;
     }
     else{
