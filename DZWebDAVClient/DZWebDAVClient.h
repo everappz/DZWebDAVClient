@@ -10,6 +10,10 @@
 
 #import <AFNetworking/AFNetworking.h>
 
+
+#define DZ_RANGE_REQUEST_SUPPORT
+
+
 /** The key for a uniform (MIME) type identifier returned from the property request methods. */
 extern NSString *DZWebDAVContentTypeKey;
 
@@ -33,6 +37,10 @@ extern NSString *DZWebDAVHrefKey;
 
 /** The key for directories returned from the property request methods. */
 extern NSString *DZWebDAVCollectionKey;
+
+
+
+
 
 
 @class DZWebDAVLock;
@@ -261,6 +269,8 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
                                             success:(DZWebDAVClientDataTaskSuccessBlock)success
                                             failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
+#ifdef DZ_RANGE_REQUEST_SUPPORT
+
 - (NSURLSessionDataTask *)makeGETRequestAtPath:(NSString *)path
                                     parameters:(NSDictionary *)params
                              additionalHeaders:(NSDictionary *)additionalHeaders
@@ -269,6 +279,6 @@ typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
                             didReceiveResponse:(DZWebDAVClientDataTaskDidReceiveResponseBlock)didReceiveResponse
                                        failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
-
+#endif
 
 @end

@@ -19,7 +19,7 @@
     }
     
     self.acceptableContentTypes = [[NSSet alloc] initWithObjects:@"application/xml", @"text/xml", nil];
-    self.acceptableStatusCodes = [NSIndexSet indexSetWithIndex:207];
+    //self.acceptableStatusCodes = [NSIndexSet indexSetWithIndex:207];
     
     return self;
 }

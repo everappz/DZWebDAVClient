@@ -9,6 +9,8 @@
 #import "DZWebDAVLock.h"
 #import "DZWebDAVMultiStatusResponseSerializer.h"
 #import "DZWebDAVMultiStatusResponse.h"
+#import "DZWebDAVRequestSerializer.h"
+
 
 
 NSString const *DZWebDAVContentTypeKey      = @"getcontenttype";
@@ -47,7 +49,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 {
     self = [super initWithBaseURL:url sessionConfiguration:configuration];
     if (self) {
-        self.requestSerializer = [AFHTTPRequestSerializer serializer];
+        self.requestSerializer = [DZWebDAVRequestSerializer serializer];
         self.requestSerializer.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
         self.responseSerializer = [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer], [AFHTTPResponseSerializer serializer]]];
         
@@ -143,7 +145,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 
 - (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response responseObject:(id _Nullable )responseObject error:(NSError * _Nullable )error success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
     BOOL statusCodeError = NO;
-    NSInteger statusCode = 0;
+    NSInteger statusCode = 500;
     if([response isKindOfClass:[NSHTTPURLResponse class]]){
         statusCode = [(NSHTTPURLResponse *)response statusCode];
     }
@@ -479,6 +481,9 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     
 }
 
+
+#ifdef DZ_RANGE_REQUEST_SUPPORT
+
 - (NSURLSessionDataTask *)makeGETRequestAtPath:(NSString *)path
                                          parameters:(NSDictionary *)params
                                   additionalHeaders:(NSDictionary *)additionalHeaders
@@ -500,5 +505,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     [task resume];
     return task;
 }
+
+#endif
 
 @end
