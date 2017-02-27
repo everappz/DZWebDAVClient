@@ -10,6 +10,7 @@
 #import "DZWebDAVMultiStatusResponseSerializer.h"
 #import "DZWebDAVMultiStatusResponse.h"
 #import "DZWebDAVRequestSerializer.h"
+#import "NSString+DZAdditions.h"
 
 
 
@@ -162,8 +163,16 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     }
 }
 
+    
+  
+    
 - (NSMutableURLRequest *)requestWithMethod:(NSString *)method path:(NSString *)path parameters:(NSDictionary *)parameters {
-    NSMutableURLRequest *request = [self.requestSerializer requestWithMethod:method URLString:[[self.baseURL URLByAppendingPathComponent:path] absoluteString] parameters:parameters error:nil];
+    
+    NSString *absoluteURLString = [[self.baseURL absoluteString] dzstringByDeletingLastPathSlash];
+    NSString *pathNormalized = [path dzstringByDeletingFirstPathSlash];
+    NSString *resultURLString = [[[NSURL URLWithString:absoluteURLString] URLByAppendingPathComponent:pathNormalized] absoluteString];
+    
+    NSMutableURLRequest *request = [self.requestSerializer requestWithMethod:method URLString:resultURLString parameters:parameters error:nil];
     NSParameterAssert([request valueForHTTPHeaderField:@"User-Agent"].length>0);
     [request setValue:[UIDevice currentDevice].name forHTTPHeaderField:@"X-Device-Name"];
     [request setCachePolicy:NSURLRequestReloadIgnoringLocalCacheData];
@@ -249,6 +258,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                 
                 // Replace an absolute path with a relative one
                 href = [href stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
+                
                 //if ([[key substringToIndex:1] isEqualToString:@"/"] && key.length>1){
                 //    key = [key substringFromIndex:1];
                 //}
