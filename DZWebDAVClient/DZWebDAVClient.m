@@ -7,8 +7,8 @@
 #import "NSDate+DZRFC1123.h"
 #import "DZISO8601DateFormatter.h"
 #import "DZWebDAVLock.h"
-#import "DZXMLParserResponseSerializer.h"
-#import "DZXMLReader.h"
+#import "DZWebDAVMultiStatusResponseSerializer.h"
+#import "DZWebDAVMultiStatusResponse.h"
 
 
 NSString const *DZWebDAVContentTypeKey      = @"getcontenttype";
@@ -19,6 +19,7 @@ NSString const *DZWebDAVModificationDateKey = @"modificationdate";
 NSString const *DZWebDAVContentLengthKey    = @"getcontentlength";
 NSString const *DZWebDAVHrefKey             = @"href";
 NSString const *DZWebDAVCollectionKey       = @"collection";
+NSString const *DZWebDAVTextNodeKey         = @"text";
 
 
 const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
@@ -48,7 +49,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     if (self) {
         self.requestSerializer = [AFHTTPRequestSerializer serializer];
         self.requestSerializer.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-        self.responseSerializer = [DZXMLParserResponseSerializer serializer];
+        self.responseSerializer = [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer], [AFHTTPResponseSerializer serializer]]];
+        
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         
@@ -141,9 +143,11 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 
 - (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response responseObject:(id _Nullable )responseObject error:(NSError * _Nullable )error success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
     BOOL statusCodeError = NO;
+    NSInteger statusCode = 0;
     if([response isKindOfClass:[NSHTTPURLResponse class]]){
-        statusCodeError = [(NSHTTPURLResponse *)response statusCode]>=300;
+        statusCode = [(NSHTTPURLResponse *)response statusCode];
     }
+    statusCodeError = (statusCode >=300);
     if(responseObject!=nil || statusCodeError==NO){
         if(success){
             success(responseObject);
@@ -213,163 +217,84 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:^(id responseObject) {
         
-        if (responseObject && ![responseObject isKindOfClass:[NSDictionary class]]) {
+        if (responseObject && ![responseObject isKindOfClass:[NSArray class]]) {
             if (failure){
                 failure([NSError errorWithDomain:AFURLResponseSerializationErrorDomain code:NSURLErrorCannotParseResponse userInfo:nil]);
             }
             return;
         }
         
-        id checkItems = [responseObject valueForKeyPath:@"multistatus.response.propstat.prop"];
-        id checkHrefs = [responseObject valueForKeyPath:@"multistatus.response.href"];
+        NSArray<DZWebDAVMultiStatusResponse *> *statusResponseArray = (NSArray <DZWebDAVMultiStatusResponse*> *)responseObject;
+        NSMutableArray<NSDictionary *> *resultArray = [[NSMutableArray<NSDictionary *> alloc] initWithCapacity:statusResponseArray.count];
         
-        NSArray *objects = nil;
-        if ([checkItems isKindOfClass:[NSArray class]]) {
-            objects = checkItems;
-        }
-        else if (checkItems) {
-            objects = @[ checkItems ];
-        }
-        
-        NSArray *keys = nil;
-        if ([checkHrefs isKindOfClass:[NSArray class]]) {
-            keys = checkHrefs;
-        }
-        else if (checkHrefs) {
-            keys = @[ checkHrefs ];
-        }
-        
-        NSDictionary *unformattedDict = [NSDictionary dictionaryWithObjects: objects forKeys: keys];
-        NSMutableArray *resultItems = [[NSMutableArray alloc] initWithCapacity:unformattedDict.count];
-        
-        [unformattedDict enumerateKeysAndObjectsUsingBlock:^(NSString *absoluteKey, NSDictionary *unformatted, BOOL *stop) {
+        [statusResponseArray enumerateObjectsUsingBlock:^(DZWebDAVMultiStatusResponse * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            
+
+            BOOL isCollection = obj.isCollection;
+            NSUInteger contentLength = obj.contentLength;
+            NSDate *creationDate = obj.creationDate;
+            NSDate *lastModifiedDate = obj.lastModifiedDate;
+            NSString *etag = obj.etag;
+            NSString *ctag = obj.ctag;
+            NSString *href = obj.href;
+            NSString *contentType = obj.contentType;
+
             
             // filter out Finder thumbnail files (._filename), they get us screwed up.
-            if ([absoluteKey.lastPathComponent hasPrefix: @"._"]==NO){
-              
+            if ( href.length>0 &&
+                [href.lastPathComponent hasPrefix: @"._"]==NO &&
+                [href.lastPathComponent hasPrefix:@".DS_Store"]==NO ){
+                
                 // Replace an absolute path with a relative one
-                NSString *key = [absoluteKey stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
+                href = [href stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
                 //if ([[key substringToIndex:1] isEqualToString:@"/"] && key.length>1){
                 //    key = [key substringFromIndex:1];
                 //}
                 
                 // reformat the response dictionaries into usable values
                 NSMutableDictionary *object = [[NSMutableDictionary alloc] init];
-                
-                id origCreationDate = [unformatted objectForKey: DZWebDAVCreationDateKey];
-                NSString *origCreationDateString = nil;
-                
-                if([origCreationDate isKindOfClass:[NSString class]]){
-                    origCreationDateString = (NSString *)origCreationDate;
-                }
-                else if([origCreationDate isKindOfClass:[NSDictionary class]]){
-                    NSDictionary *dict = (NSDictionary *)origCreationDate;
-                    id textNode = [dict objectForKey:kXMLReaderTextNodeKey];
-                    if([textNode isKindOfClass:[NSString class]]){
-                        origCreationDateString = (NSString *)textNode;
-                    }
-                }
-                
-                NSDate *creationDate = [NSDate dateFromDZRFC1123String: origCreationDateString] ?: [[[DZISO8601DateFormatter alloc] init] dateFromString: origCreationDateString] ?: nil;
-                
-                
-                id origModificationDate = [unformatted objectForKey: DZWebDAVModificationDateKey] ?: [unformatted objectForKey: @"getlastmodified"];
-                NSString *origModificationDateString = nil;
-                
-                if([origModificationDate isKindOfClass:[NSString class]]){
-                    origModificationDateString = (NSString *)origModificationDate;
-                }
-                else if([origModificationDate isKindOfClass:[NSDictionary class]]){
-                    NSDictionary *dict = (NSDictionary *)origModificationDate;
-                    id textNode = [dict objectForKey:kXMLReaderTextNodeKey];
-                    if([textNode isKindOfClass:[NSString class]]){
-                        origModificationDateString = (NSString *)textNode;
-                    }
-                }
-                
-                NSDate *modificationDate = [NSDate dateFromDZRFC1123String: origModificationDateString] ?: [[[DZISO8601DateFormatter alloc] init] dateFromString: origModificationDateString] ?: nil;
-                
-                
-                id contentLengthObj = [unformatted objectForKey: DZWebDAVContentLengthKey];
-                NSNumber *contentLength = nil;
-                
-                if([contentLengthObj isKindOfClass:[NSNumber class]]){
-                    contentLength = (NSNumber *)contentLengthObj;
-                }
-                else if([contentLengthObj isKindOfClass:[NSString class]]){
-                    NSString *str = (NSString *)contentLengthObj;
-                    contentLength = @([str longLongValue]);
-                }
-                else if([contentLengthObj isKindOfClass:[NSDictionary class]]){
-                    NSDictionary *dict = (NSDictionary *)contentLengthObj;
-                    id textNode = [dict objectForKey:kXMLReaderTextNodeKey];
-                    if([textNode isKindOfClass:[NSNumber class]]){
-                        contentLength = (NSNumber *)textNode;
-                    }
-                }
-                
-                BOOL isCollection = NO;
-                
-                id resourceTypeObj = [unformatted objectForKey: @"resourcetype"];
-                NSString *resourceTypeString = nil;
-                if([resourceTypeObj isKindOfClass:[NSString class]]){
-                    resourceTypeString = (NSString *)resourceTypeObj;
-                }
-                
-                
-                id isCollectionObj = [unformatted objectForKey: @"iscollection"];
-                NSString *iscollectionString = nil;
-                if([isCollectionObj isKindOfClass:[NSString class]]){
-                    iscollectionString = (NSString *)isCollectionObj;
-                }
-                
-                
-                if([resourceTypeString isEqualToString:@"collection"] || [iscollectionString isEqualToString:@"true"] || [iscollectionString isEqualToString:@"yes"] ){
-                    isCollection = YES;
-                }
-
-                
-                if (unformatted[DZWebDAVETagKey]){
-                    [object setObject: unformatted[DZWebDAVETagKey] forKey: DZWebDAVETagKey];
-                }
-                
-                if (unformatted[DZWebDAVCTagKey]){
-                    [object setObject: unformatted[DZWebDAVCTagKey] forKey: DZWebDAVCTagKey];
-                }
-                
-                if (unformatted[DZWebDAVContentTypeKey]){
-                    [object setObject: unformatted[DZWebDAVContentTypeKey] forKey: DZWebDAVContentTypeKey];
-                }
-                else if (unformatted[@"contenttype"]){
-                    [object setObject: [unformatted objectForKey: @"contenttype"] forKey: DZWebDAVContentTypeKey];
-                }
 
                 if (creationDate) {
                     [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
+                }
+                
+                if (etag) {
+                    [object setObject: etag forKey: DZWebDAVETagKey];
+                }
+                
+                if (ctag) {
+                    [object setObject: ctag forKey: DZWebDAVCTagKey];
+                }
+                
+                if (contentType) {
+                    [object setObject: contentType forKey: DZWebDAVContentTypeKey];
                 }
                 
                 if (isCollection) {
                     [object setObject: @(isCollection) forKey: DZWebDAVCollectionKey];
                 }
                 
-                if (modificationDate) {
-                    [object setObject: modificationDate forKey: DZWebDAVModificationDateKey];
+                if (lastModifiedDate) {
+                    [object setObject: lastModifiedDate forKey: DZWebDAVModificationDateKey];
                 }
                 
                 if (contentLength){
-                    [object setObject: contentLength forKey: DZWebDAVContentLengthKey];
+                    [object setObject: @(contentLength) forKey: DZWebDAVContentLengthKey];
                 }
                 
-                if (object && key){
-                    [object setObject: key forKey: DZWebDAVHrefKey];
-                    [resultItems addObject:object];
+                if (href){
+                    [object setObject: href forKey: DZWebDAVHrefKey];
+                    
                 }
+                
+                [resultArray addObject:object];
+                
             }
             
         }];
         
         if (success){
-            success(resultItems);
+            success(resultArray);
         }
         
     } failure:failure];
@@ -453,23 +378,42 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     return uploadTask;
 }
 
++ (NSString*)MIMETypeForExtension:(NSString*)extension
+{
+    CFStringRef fileExtension = (__bridge  CFStringRef)extension;
+    CFStringRef type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, fileExtension, NULL);
+    NSString *mimeType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass(type, kUTTagClassMIMEType);
+    if (type != NULL){
+        CFRelease(type);
+    }
+    if(!mimeType){
+        mimeType = @"application/octet-stream";
+    }
+    return mimeType;
+}
+
+
 - (NSURLSessionUploadTask *)uploadURL:(NSURL *)localSource
                                  path:(NSString *)remoteDestination
                               success:(DZWebDAVClientDataTaskSuccessBlock)success
                              progress:(DZWebDAVClientDataTaskProgressBlock)progress
                               failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+    __weak typeof (self) weakSelf = self;
     NSMutableURLRequest *request = [self requestWithMethod:@"PUT" path:remoteDestination parameters:nil];
+    
+    BOOL isDir = NO;
+    BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:localSource.path isDirectory:&isDir];
+    NSDictionary *fileAttrs =
+    [[NSFileManager defaultManager] attributesOfItemAtPath:localSource.path error:nil];
+    if (!fileExists || isDir || !fileAttrs) {
+        NSAssert(NO, @"Invalid condition");
+    }
+    NSString* contentLength = [NSString stringWithFormat: @"%qu", [fileAttrs fileSize]];
+    [request setValue:[[self class] MIMETypeForExtension:localSource.pathExtension] forHTTPHeaderField:@"Content-Type"];
+    [request setValue:contentLength forHTTPHeaderField:@"Content-Length"];
+    
     NSURLSessionUploadTask *uploadTask = [self uploadTaskWithRequest:request fromFile:localSource progress:progress completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-        if(responseObject==nil){
-            if(failure){
-                failure(error);
-            }
-        }
-        else{
-            if(success){
-                success(responseObject);
-            }
-        }
+        [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
     }];
     [uploadTask resume];
     return uploadTask;
