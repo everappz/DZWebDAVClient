@@ -54,6 +54,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         self.requestSerializer.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
         self.responseSerializer = [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer], [AFHTTPResponseSerializer serializer]]];
         
+        self.securityPolicy.allowInvalidCertificates = YES;
+        
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         
