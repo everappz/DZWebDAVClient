@@ -148,13 +148,11 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 }
 
 - (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response responseObject:(id _Nullable )responseObject error:(NSError * _Nullable )error success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
-    BOOL statusCodeError = NO;
-    NSInteger statusCode = 500;
+    NSInteger statusCode = 200;
     if([response isKindOfClass:[NSHTTPURLResponse class]]){
         statusCode = [(NSHTTPURLResponse *)response statusCode];
     }
-    statusCodeError = (statusCode >=300);
-    if(responseObject!=nil || statusCodeError==NO){
+    if(statusCode<300){
         if(success){
             success(responseObject);
         }
@@ -166,9 +164,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     }
 }
 
-    
-  
-    
+
 - (NSMutableURLRequest *)requestWithMethod:(NSString *)method path:(NSString *)path parameters:(NSDictionary *)parameters {
     
     NSString *absoluteURLString = [[self.baseURL absoluteString] dzstringByDeletingLastPathSlash];
