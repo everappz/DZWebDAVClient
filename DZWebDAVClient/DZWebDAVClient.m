@@ -54,9 +54,6 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         self.requestSerializer.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
         self.responseSerializer = [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer], [AFHTTPResponseSerializer serializer]]];
         
-        //FIXME
-        //self.securityPolicy.allowInvalidCertificates = YES;
-        
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         
@@ -79,7 +76,10 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                     disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
                 }
             } else {
-                if (weakSelf.credential) {
+                if([challenge previousFailureCount] >= 1) {
+                    disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+                }
+                else if (weakSelf.credential) {
                     credential = weakSelf.credential;
                     disposition = NSURLSessionAuthChallengeUseCredential;
                 } else {
@@ -109,7 +109,10 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                     disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
                 }
             } else {
-                if (weakSelf.credential) {
+                if([challenge previousFailureCount] >= 1) {
+                    disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+                }
+                else if (weakSelf.credential) {
                     credential = weakSelf.credential;
                     disposition = NSURLSessionAuthChallengeUseCredential;
                 } else {
@@ -123,7 +126,6 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             
             return disposition;
         }];
-        
         
         [self setDataTaskDidReceiveDataBlock:^(NSURLSession * _Nonnull session, NSURLSessionDataTask * _Nonnull dataTask, NSData * _Nonnull data) {
             
@@ -254,13 +256,6 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             if ( href.length>0 &&
                 [href.lastPathComponent hasPrefix: @"._"]==NO &&
                 [href.lastPathComponent hasPrefix:@".DS_Store"]==NO ){
-                
-                // Replace an absolute path with a relative one
-                href = [href stringByReplacingOccurrencesOfString:self.baseURL.path withString:@""];
-                
-                //if ([[key substringToIndex:1] isEqualToString:@"/"] && key.length>1){
-                //    key = [key substringFromIndex:1];
-                //}
                 
                 // reformat the response dictionaries into usable values
                 NSMutableDictionary *object = [[NSMutableDictionary alloc] init];
