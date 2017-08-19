@@ -54,10 +54,15 @@ typedef void(^DZWebDAVClientDataLockTaskSuccessBlock)(DZWebDAVLock *lock);
 typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);
 
 
+typedef BOOL(^DZWebDAVClientVerifyServerIdentityBlock)(NSString *host);
+
+
 @interface DZWebDAVClient : AFHTTPSessionManager
 
 
 @property (nonatomic,strong)NSURLCredential *credential;
+
+@property (nonatomic,copy)DZWebDAVClientVerifyServerIdentityBlock verifyServerIdentityBlock;
 
 /**
  Enqueues an operation to copy the object at a path to another path using a `COPY` request.
