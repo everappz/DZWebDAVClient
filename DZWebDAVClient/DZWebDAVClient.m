@@ -186,7 +186,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 }
 
 - (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response responseObject:(id _Nullable )responseObject error:(NSError * _Nullable )error success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
-    NSInteger statusCode = 200;
+    NSInteger statusCode = 500;
     if([response isKindOfClass:[NSHTTPURLResponse class]]){
         statusCode = [(NSHTTPURLResponse *)response statusCode];
     }
