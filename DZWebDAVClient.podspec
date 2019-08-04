@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = 'DZWebDAVClient'
   s.license      = 'MIT'
-  s.version      = '1.0.1'
+  s.version      = '1.0.2'
   s.summary      = 'An Objective-C WebDAV client based on AFNetworking.'
   s.homepage     = 'https://github.com/zwaldowski/DZWebDAVClient'
   s.author       = { 'Zachary Waldowski' => 'zwaldowski@gmail.com' }
