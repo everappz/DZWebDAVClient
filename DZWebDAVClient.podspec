@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = 'DZWebDAVClient'
   s.license      = 'MIT'
-  s.version      = '1.0.3'
+  s.version      = '1.0.4'
   s.summary      = 'An Objective-C WebDAV client based on AFNetworking.'
   s.homepage     = 'https://github.com/zwaldowski/DZWebDAVClient'
   s.author       = { 'Zachary Waldowski' => 'zwaldowski@gmail.com' }
@@ -10,8 +10,8 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.ios.deployment_target = '5.0'
   s.osx.deployment_target = '10.7'
-  s.dependency 'Ono', '~> 1.2'
-  s.dependency 'AFNetworking', '~> 3'
+  s.dependency 'Ono'
+  s.dependency 'AFNetworking'
   s.prefix_header_contents = <<-EOS
   #import <Availability.h>
 
