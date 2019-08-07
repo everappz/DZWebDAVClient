@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.osx.deployment_target = '10.7'
   s.dependency 'Ono'
   s.dependency 'AFNetworking'
-  s.frameworks 'SystemConfiguration', 'MobileCoreServices', 'Security'
+  s.frameworks = 'SystemConfiguration', 'MobileCoreServices', 'Security'
   s.prefix_header_contents = <<-EOS
   #import <Availability.h>
 
