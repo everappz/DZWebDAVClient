@@ -551,11 +551,13 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         [request setValue:obj forHTTPHeaderField:key];
     }];
     NSURLSessionDataTask *task = [self dataTaskWithRequest:request
-                                            didReceiveData:didReceiveData
-                                        didReceiveResponse:didReceiveResponse
-                                         completionHandler:^(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error){
-                                             [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
-                                         }];
+               uploadProgress:nil
+             downloadProgress:nil
+           didReceiveResponse:didReceiveResponse
+               didReceiveData:didReceiveData
+            completionHandler:^(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error){
+        [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
+    }];
     [task resume];
     return task;
 }
