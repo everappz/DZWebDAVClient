@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '9.0'
   s.osx.deployment_target = '10.7'
   s.dependency 'Ono'
-  s.dependency 'AFNetworking', :git => 'https://github.com/leshkoapps/AFNetworking.git', :tag => '3.2.1'
+  s.dependency 'AFNetworking'
   s.frameworks = 'SystemConfiguration', 'MobileCoreServices', 'Security'
   s.prefix_header_contents = <<-EOS
   #import <Availability.h>
