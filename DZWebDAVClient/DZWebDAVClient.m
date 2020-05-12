@@ -114,7 +114,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         }];
         
         
-        [self setTaskDidReceiveAuthenticationChallengeBlock:^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLSessionTask * _Nonnull task, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable cred) {
+                [self setAuthenticationChallengeHandler:^id _Nonnull(NSURLSession * _Nonnull session, NSURLSessionTask * _Nonnull task, NSURLAuthenticationChallenge * _Nonnull challenge, void (^ _Nonnull completionHandler)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable)) {
             
             __block NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
             __block NSURLCredential *credential = nil;
@@ -156,11 +156,10 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                 }
             }
             
-            if(cred){
-                *cred = credential;
+            if(completionHandler){
+                completionHandler(disposition,credential);
             }
-            
-            return disposition;
+            return nil;
         }];
         
         [self setDataTaskDidReceiveDataBlock:^(NSURLSession * _Nonnull session, NSURLSessionDataTask * _Nonnull dataTask, NSData * _Nonnull data) {
