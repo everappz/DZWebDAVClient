@@ -27,11 +27,22 @@ NSString const *DZWebDAVTextNodeKey         = @"text";
 
 const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 
+@interface DZWebDAVDataTaskBlock : NSObject
 
+@property (nonatomic,copy)DZWebDAVClientDataTaskDidReceiveDataBlock didReceiveDataBlock;
+@property (nonatomic,copy)DZWebDAVClientDataTaskDidReceiveResponseBlock didReceiveResponseBlock;
+@property (nonatomic,assign)NSUInteger taskIdentifier;
+
+@end
 
 @interface DZWebDAVClient()
 
-- (NSURLSessionDataTask *)mr_listPath:(NSString *)path depth:(NSUInteger)depth success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure;
+- (NSURLSessionDataTask *)mr_listPath:(NSString *)path
+                                depth:(NSUInteger)depth
+                              success:(DZWebDAVClientDataTaskSuccessBlock)success
+                              failure:(DZWebDAVClientDataTaskErrorBlock)failure;
+
+@property (nonatomic,strong)NSMutableDictionary<NSNumber *,DZWebDAVDataTaskBlock *> *dataTaskBlocksMappingDictionary;
 
 @end
 
@@ -52,20 +63,26 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     if (self) {
         self.requestSerializer = [DZWebDAVRequestSerializer serializer];
         self.requestSerializer.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-        self.responseSerializer = [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer], [AFHTTPResponseSerializer serializer]]];
+        self.responseSerializer =
+        [AFCompoundResponseSerializer compoundSerializerWithResponseSerializers:@[[DZWebDAVMultiStatusResponseSerializer serializer],
+                                                                                  [AFHTTPResponseSerializer serializer]]];
         
         dispatch_queue_t callBackQueue = dispatch_queue_create("com.dizzytechnology.networking.client.callback", NULL);
         self.completionQueue = callBackQueue;
         
         __weak typeof (self) weakSelf = self;
         
-        [self setSessionDidReceiveAuthenticationChallengeBlock:^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable cred) {
+        [self setSessionDidReceiveAuthenticationChallengeBlock:^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session,
+                                                                                                     NSURLAuthenticationChallenge * _Nonnull challenge,
+                                                                                                     NSURLCredential *__autoreleasing  _Nullable * _Nullable cred)
+         {
             
+            __strong typeof (weakSelf) strongSelf = weakSelf;
             __block NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
             __block NSURLCredential *credential = nil;
             
             if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
-                if ([weakSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                if ([strongSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
                     credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
                     if (credential) {
                         disposition = NSURLSessionAuthChallengeUseCredential;
@@ -73,7 +90,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                         disposition = NSURLSessionAuthChallengePerformDefaultHandling;
                     }
                 } else {
-
+                    
                     NSString *host = challenge.protectionSpace.host;
                     void (^completion)(BOOL trust) = ^(BOOL trust) {
                         if (trust) {
@@ -85,8 +102,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                         }
                     };
                     
-                    if (weakSelf.verifyServerIdentityBlock) {
-                        completion(weakSelf.verifyServerIdentityBlock(host));
+                    if (strongSelf.verifyServerIdentityBlock) {
+                        completion(strongSelf.verifyServerIdentityBlock(host));
                     }
                     else {
                         completion(NO);
@@ -97,8 +114,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                 if([challenge previousFailureCount] >= 1) {
                     disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
                 }
-                else if (weakSelf.credential) {
-                    credential = weakSelf.credential;
+                else if (strongSelf.credential) {
+                    credential = strongSelf.credential;
                     disposition = NSURLSessionAuthChallengeUseCredential;
                 } else {
                     disposition = NSURLSessionAuthChallengePerformDefaultHandling;
@@ -114,13 +131,18 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         }];
         
         
-                [self setAuthenticationChallengeHandler:^id _Nonnull(NSURLSession * _Nonnull session, NSURLSessionTask * _Nonnull task, NSURLAuthenticationChallenge * _Nonnull challenge, void (^ _Nonnull completionHandler)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable)) {
+        [self setAuthenticationChallengeHandler:^id _Nonnull(NSURLSession * _Nonnull session,
+                                                             NSURLSessionTask * _Nonnull task,
+                                                             NSURLAuthenticationChallenge * _Nonnull challenge,
+                                                             void (^ _Nonnull completionHandler)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))
+         {
             
             __block NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
             __block NSURLCredential *credential = nil;
+            __strong typeof (weakSelf) strongSelf = weakSelf;
             
             if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
-                if ([weakSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                if ([strongSelf.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
                     disposition = NSURLSessionAuthChallengeUseCredential;
                     credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
                 } else {
@@ -136,8 +158,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                         }
                     };
                     
-                    if (weakSelf.verifyServerIdentityBlock) {
-                        completion(weakSelf.verifyServerIdentityBlock(host));
+                    if (strongSelf.verifyServerIdentityBlock) {
+                        completion(strongSelf.verifyServerIdentityBlock(host));
                     }
                     else {
                         completion(NO);
@@ -148,8 +170,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                 if([challenge previousFailureCount] >= 1) {
                     disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
                 }
-                else if (weakSelf.credential) {
-                    credential = weakSelf.credential;
+                else if (strongSelf.credential) {
+                    credential = strongSelf.credential;
                     disposition = NSURLSessionAuthChallengeUseCredential;
                 } else {
                     disposition = NSURLSessionAuthChallengePerformDefaultHandling;
@@ -162,11 +184,26 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             return nil;
         }];
         
+        self.dataTaskBlocksMappingDictionary = [NSMutableDictionary<NSNumber *,DZWebDAVDataTaskBlock *> new];
+        
         [self setDataTaskDidReceiveDataBlock:^(NSURLSession * _Nonnull session, NSURLSessionDataTask * _Nonnull dataTask, NSData * _Nonnull data) {
-            
+            __strong typeof (weakSelf) strongSelf = weakSelf;
+            @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
+                DZWebDAVDataTaskBlock *dataTaskBlock = [strongSelf.dataTaskBlocksMappingDictionary objectForKey:@(dataTask.taskIdentifier)];
+                if(dataTaskBlock.didReceiveDataBlock){
+                    dataTaskBlock.didReceiveDataBlock(data);
+                }
+            }
         }];
         
         [self setDataTaskDidReceiveResponseBlock:^NSURLSessionResponseDisposition(NSURLSession * _Nonnull session, NSURLSessionDataTask * _Nonnull dataTask, NSURLResponse * _Nonnull response) {
+            __strong typeof (weakSelf) strongSelf = weakSelf;
+            @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
+                DZWebDAVDataTaskBlock *dataTaskBlock = [strongSelf.dataTaskBlocksMappingDictionary objectForKey:@(dataTask.taskIdentifier)];
+                if(dataTaskBlock.didReceiveResponseBlock){
+                    dataTaskBlock.didReceiveResponseBlock(response);
+                }
+            }
             return NSURLSessionResponseAllow;
         }];
         
@@ -175,16 +212,30 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     return self;
 }
 
-- (NSURLSessionDataTask *)mr_dataTaskWithRequest:(NSURLRequest *)request success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
+- (NSURLSessionDataTask *)mr_dataTaskWithRequest:(NSURLRequest *)request
+                                         success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                         failure:(DZWebDAVClientDataTaskErrorBlock)failure {
     __weak typeof (self) weakSelf = self;
-    NSURLSessionDataTask *task = [self dataTaskWithRequest:request uploadProgress:nil downloadProgress:nil completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-        [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
+    NSURLSessionDataTask *task = [self dataTaskWithRequest:request
+                                            uploadProgress:nil
+                                          downloadProgress:nil
+                                         completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+        __strong typeof (weakSelf) strongSelf = weakSelf;
+        [strongSelf dataTaskDidCompleteWithResponse:response
+                                     responseObject:responseObject
+                                              error:error
+                                            success:success
+                                            failure:failure];
     }];
     [task resume];
     return task;
 }
 
-- (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response responseObject:(id _Nullable )responseObject error:(NSError * _Nullable )error success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure {
+- (void)dataTaskDidCompleteWithResponse:(NSURLResponse *)response
+                         responseObject:(id _Nullable )responseObject
+                                  error:(NSError * _Nullable )error
+                                success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                failure:(DZWebDAVClientDataTaskErrorBlock)failure {
     NSInteger statusCode = 500;
     if([response isKindOfClass:[NSHTTPURLResponse class]]){
         statusCode = [(NSHTTPURLResponse *)response statusCode];
@@ -202,13 +253,18 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 }
 
 
-- (NSMutableURLRequest *)requestWithMethod:(NSString *)method path:(NSString *)path parameters:(NSDictionary *)parameters {
+- (NSMutableURLRequest *)requestWithMethod:(NSString *)method
+                                      path:(NSString *)path
+                                parameters:(NSDictionary *)parameters {
     
     NSString *absoluteURLString = [[self.baseURL absoluteString] dzstringByDeletingLastPathSlash];
     NSString *pathNormalized = [path dzstringByDeletingFirstPathSlash];
     NSString *resultURLString = [[[NSURL URLWithString:absoluteURLString] URLByAppendingPathComponent:pathNormalized] absoluteString];
     
-    NSMutableURLRequest *request = [self.requestSerializer requestWithMethod:method URLString:resultURLString parameters:parameters error:nil];
+    NSMutableURLRequest *request = [self.requestSerializer requestWithMethod:method
+                                                                   URLString:resultURLString
+                                                                  parameters:parameters
+                                                                       error:nil];
     NSParameterAssert([request valueForHTTPHeaderField:@"User-Agent"].length>0);
     [request setValue:[UIDevice currentDevice].name forHTTPHeaderField:@"X-Device-Name"];
     [request setCachePolicy:NSURLRequestReloadIgnoringLocalCacheData];
@@ -227,15 +283,15 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 }
 
 - (NSURLSessionDataTask *)copyPath:(NSString *)source
-          toPath:(NSString *)destination
-         success:(DZWebDAVClientDataTaskSuccessBlock)success
-         failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+                            toPath:(NSString *)destination
+                           success:(DZWebDAVClientDataTaskSuccessBlock)success
+                           failure:(DZWebDAVClientDataTaskErrorBlock)failure{
     NSString *destinationPath = [[self.normalizedBaseURL URLByAppendingPathComponent:[destination dzstringByDeletingFirstPathSlash]] absoluteString];
     NSMutableURLRequest *request = [self requestWithMethod:@"COPY" path:source parameters:nil];
     if(destinationPath){
         [request setValue:destinationPath forHTTPHeaderField:@"Destination"];
     }
-	[request setValue:@"T" forHTTPHeaderField:@"Overwrite"];
+    [request setValue:@"T" forHTTPHeaderField:@"Overwrite"];
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
     return task;
 }
@@ -249,7 +305,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     if(destinationPath){
         [request setValue:destinationPath forHTTPHeaderField:@"Destination"];
     }
-	[request setValue:@"T" forHTTPHeaderField:@"Overwrite"];
+    [request setValue:@"T" forHTTPHeaderField:@"Overwrite"];
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
     return task;
 }
@@ -262,16 +318,21 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     return task;
 }
 
-- (NSURLSessionDataTask *)mr_listPath:(NSString *)path depth:(NSUInteger)depth success:(DZWebDAVClientDataTaskSuccessBlock)success failure:(DZWebDAVClientDataTaskErrorBlock)failure{
-	NSParameterAssert(success);
-	NSMutableURLRequest *request = [self requestWithMethod:@"PROPFIND" path:path parameters:nil];
-	NSString *depthHeader = nil;
-	if (depth <= 0)
-		depthHeader = @"0";
-	else if (depth == 1)
-		depthHeader = @"1";
-	else
-		depthHeader = @"infinity";
+- (NSURLSessionDataTask *)mr_listPath:(NSString *)path
+                                depth:(NSUInteger)depth
+                              success:(DZWebDAVClientDataTaskSuccessBlock)success
+                              failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+    NSParameterAssert(success);
+    NSMutableURLRequest *request = [self requestWithMethod:@"PROPFIND"
+                                                      path:path
+                                                parameters:nil];
+    NSString *depthHeader = nil;
+    if (depth <= 0)
+        depthHeader = @"0";
+    else if (depth == 1)
+        depthHeader = @"1";
+    else
+        depthHeader = @"infinity";
     [request setValue: depthHeader forHTTPHeaderField: @"Depth"];
     [request setHTTPBody:[@"<?xml version=\"1.0\" encoding=\"utf-8\" ?><D:propfind xmlns:D=\"DAV:\"><D:allprop/></D:propfind>" dataUsingEncoding:NSUTF8StringEncoding]];
     [request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
@@ -298,7 +359,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             NSString *ctag = obj.ctag;
             NSString *href = obj.href;
             NSString *contentType = obj.contentType;
-
+            
             // filter out Finder thumbnail files (._filename), they get us screwed up.
             if ( href.length>0 &&
                 [href.lastPathComponent hasPrefix: @"._"]==NO &&
@@ -307,7 +368,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                 
                 // reformat the response dictionaries into usable values
                 NSMutableDictionary *object = [[NSMutableDictionary alloc] init];
-
+                
                 if (creationDate) {
                     [object setObject: creationDate forKey: DZWebDAVCreationDateKey];
                 }
@@ -346,7 +407,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             }
             
         }];
-
+        
         if (success){
             success(resultArray);
         }
@@ -356,33 +417,50 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     return task;
 }
 
-- (NSURLSessionDataTask *)propertiesOfPath:(NSString *)path success:(DZWebDAVClientDataTaskSuccessBlock)success
+- (NSURLSessionDataTask *)propertiesOfPath:(NSString *)path
+                                   success:(DZWebDAVClientDataTaskSuccessBlock)success
                                    failure:(DZWebDAVClientDataTaskErrorBlock)failure {
-	return [self mr_listPath:path depth:0 success:success failure:failure];
+    return [self mr_listPath:path
+                       depth:0
+                     success:success
+                     failure:failure];
 }
 
-- (NSURLSessionDataTask *)listPath:(NSString *)path success:(DZWebDAVClientDataTaskSuccessBlock)success
-         failure:(DZWebDAVClientDataTaskErrorBlock)failure{
-	return [self mr_listPath:path depth:1 success:success failure:failure];
+- (NSURLSessionDataTask *)listPath:(NSString *)path
+                           success:(DZWebDAVClientDataTaskSuccessBlock)success
+                           failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+    return [self mr_listPath:path
+                       depth:1
+                     success:success
+                     failure:failure];
 }
 
-- (NSURLSessionDataTask *)recursiveListPath:(NSString *)path success:(DZWebDAVClientDataTaskSuccessBlock)success
-                  failure:(DZWebDAVClientDataTaskErrorBlock)failure {
-	return [self mr_listPath:path depth:2 success:success failure:failure];
+- (NSURLSessionDataTask *)recursiveListPath:(NSString *)path
+                                    success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                    failure:(DZWebDAVClientDataTaskErrorBlock)failure {
+    return [self mr_listPath:path
+                       depth:2
+                     success:success
+                     failure:failure];
 }
 
 - (NSURLSessionDownloadTask *)downloadPath:(NSString *)remoteSource
-               toURL:(NSURL *)localDestination
-             success:(DZWebDAVClientDataTaskSuccessBlock)success
-            progress:(DZWebDAVClientDataTaskProgressBlock)progress
-             failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+                                     toURL:(NSURL *)localDestination
+                                   success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                  progress:(DZWebDAVClientDataTaskProgressBlock)progress
+                                   failure:(DZWebDAVClientDataTaskErrorBlock)failure{
     
     [[NSFileManager defaultManager] createDirectoryAtPath:[localDestination.path stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
     
-	NSMutableURLRequest *request = [self requestWithMethod:@"GET" path:remoteSource parameters:nil];
-
-    NSURLSessionDownloadTask *downloadTask = [self downloadTaskWithRequest:request progress:progress destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
-       return localDestination;
+    NSMutableURLRequest *request = [self requestWithMethod:@"GET"
+                                                      path:remoteSource
+                                                parameters:nil];
+    
+    NSURLSessionDownloadTask *downloadTask =
+    [self downloadTaskWithRequest:request
+                         progress:progress
+                      destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+        return localDestination;
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
         if(filePath){
             if(success){
@@ -403,8 +481,12 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
 - (NSURLSessionDataTask *)makeCollection:(NSString *)path
                                  success:(DZWebDAVClientDataTaskSuccessBlock)success
                                  failure:(DZWebDAVClientDataTaskErrorBlock)failure{
-	NSURLRequest *request = [self requestWithMethod:@"MKCOL" path:path parameters:nil];	
-    NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
+    NSURLRequest *request = [self requestWithMethod:@"MKCOL"
+                                               path:path
+                                         parameters:nil];
+    NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request
+                                                      success:success
+                                                      failure:failure];
     return task;
 }
 
@@ -413,10 +495,15 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                                success:(DZWebDAVClientDataTaskSuccessBlock)success
                               progress:(DZWebDAVClientDataTaskProgressBlock)progress
                                failure:(DZWebDAVClientDataTaskErrorBlock)failure{
-    NSMutableURLRequest *request = [self requestWithMethod:@"PUT" path:remoteDestination parameters:nil];
-	[request setValue:@"application/octet-stream" forHTTPHeaderField:@"Content-Type"];
-	[request setValue:[NSString stringWithFormat:@"%ld", (long)data.length] forHTTPHeaderField:@"Content-Length"];
-    NSURLSessionUploadTask *uploadTask = [self uploadTaskWithRequest:request fromData:data progress:progress completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+    NSMutableURLRequest *request = [self requestWithMethod:@"PUT"
+                                                      path:remoteDestination
+                                                parameters:nil];
+    [request setValue:@"application/octet-stream" forHTTPHeaderField:@"Content-Type"];
+    [request setValue:[NSString stringWithFormat:@"%ld", (long)data.length] forHTTPHeaderField:@"Content-Length"];
+    NSURLSessionUploadTask *uploadTask = [self uploadTaskWithRequest:request
+                                                            fromData:data
+                                                            progress:progress
+                                                   completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
         if(responseObject==nil){
             if(failure){
                 failure(error);
@@ -467,8 +554,16 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     [request setValue:[[self class] MIMETypeForExtension:localSource.pathExtension] forHTTPHeaderField:@"Content-Type"];
     [request setValue:contentLength forHTTPHeaderField:@"Content-Length"];
     
-    NSURLSessionUploadTask *uploadTask = [self uploadTaskWithRequest:request fromFile:localSource progress:progress completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-        [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
+    NSURLSessionUploadTask *uploadTask = [self uploadTaskWithRequest:request
+                                                            fromFile:localSource
+                                                            progress:progress
+                                                   completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+        __strong typeof (weakSelf) strongSelf = weakSelf;
+        [strongSelf dataTaskDidCompleteWithResponse:response
+                                     responseObject:responseObject
+                                              error:error
+                                            success:success
+                                            failure:failure];
     }];
     [uploadTask resume];
     return uploadTask;
@@ -484,7 +579,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     NSMutableURLRequest *request = [self requestWithMethod: @"LOCK" path: path parameters: nil];
     [request setValue: @"application/xml" forHTTPHeaderField: @"Content-Type"];
     [request setValue: timeout ? [NSString stringWithFormat: @"Second-%f", timeout] : @"Infinite, Second-4100000000" forHTTPHeaderField: @"Timeout"];
-	[request setValue: recursive ? @"Infinity" : @"0" forHTTPHeaderField: @"Depth"];
+    [request setValue: recursive ? @"Infinity" : @"0" forHTTPHeaderField: @"Depth"];
     NSString *bodyData = [NSString stringWithFormat: @"<?xml version=\"1.0\" encoding=\"utf-8\"?><D:lockinfo xmlns:D=\"DAV:\"><D:lockscope><D:%@/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockinfo>", exclusive ? @"exclusive" : @"shared"];
     [request setHTTPBody: [bodyData dataUsingEncoding:NSUTF8StringEncoding]];
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:^(id responseObject) {
@@ -502,7 +597,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     NSMutableURLRequest *request = [self requestWithMethod: @"LOCK" path: lock.URL.path parameters: nil];
     [request setValue: [NSString stringWithFormat:@"(<%@>)", lock.token] forHTTPHeaderField: @"If"];
     [request setValue: lock.timeout ? [NSString stringWithFormat: @"Second-%f", lock.timeout] : @"Infinite, Second-4100000000" forHTTPHeaderField: @"Timeout"];
-	[request setValue: lock.recursive ? @"Infinity" : @"0" forHTTPHeaderField: @"Depth"];
+    [request setValue: lock.recursive ? @"Infinity" : @"0" forHTTPHeaderField: @"Depth"];
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:^(id responseObject) {
         [lock updateFromResponseObject: responseObject];
         if(success){
@@ -516,8 +611,8 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
                          success:(DZWebDAVClientDataTaskSuccessBlock)success
                          failure:(DZWebDAVClientDataTaskErrorBlock)failure{
     NSMutableURLRequest *request = [self requestWithMethod: @"UNLOCK" path: lock.URL.path parameters: nil];
-	[request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
-	[request setValue:[NSString stringWithFormat:@"<%@>", lock.token] forHTTPHeaderField:@"Lock-Token"];
+    [request setValue:@"application/xml" forHTTPHeaderField:@"Content-Type"];
+    [request setValue:[NSString stringWithFormat:@"<%@>", lock.token] forHTTPHeaderField:@"Lock-Token"];
     NSURLSessionDataTask *task = [self mr_dataTaskWithRequest:request success:success failure:failure];
     return task;
 }
@@ -534,33 +629,57 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
     
 }
 
-
-#ifdef DZ_RANGE_REQUEST_SUPPORT
-
 - (NSURLSessionDataTask *)makeGETRequestAtPath:(NSString *)path
-                                         parameters:(NSDictionary *)params
-                                  additionalHeaders:(NSDictionary *)additionalHeaders
-                                            success:(DZWebDAVClientDataTaskSuccessBlock)success
-                                     didReceiveData:(DZWebDAVClientDataTaskDidReceiveDataBlock)didReceiveData
-                                didReceiveResponse:(DZWebDAVClientDataTaskDidReceiveResponseBlock)didReceiveResponse
-                                            failure:(DZWebDAVClientDataTaskErrorBlock)failure{
-    __weak typeof (self) weakSelf = self;
+                                    parameters:(NSDictionary *)params
+                             additionalHeaders:(NSDictionary *)additionalHeaders
+                                       success:(DZWebDAVClientDataTaskSuccessBlock)success
+                                didReceiveData:(DZWebDAVClientDataTaskDidReceiveDataBlock)didReceiveData
+                            didReceiveResponse:(DZWebDAVClientDataTaskDidReceiveResponseBlock)didReceiveResponse
+                                       failure:(DZWebDAVClientDataTaskErrorBlock)failure{
+    
     NSMutableURLRequest *request = [self requestWithMethod:@"GET" path:path parameters:params];
     [additionalHeaders enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
         [request setValue:obj forHTTPHeaderField:key];
     }];
+    
+    DZWebDAVDataTaskBlock *dataTaskBlock = [DZWebDAVDataTaskBlock new];
+    dataTaskBlock.didReceiveDataBlock = didReceiveData;
+    dataTaskBlock.didReceiveResponseBlock = didReceiveResponse;
+    
+    __weak typeof (self) weakSelf = self;
+    __weak typeof (dataTaskBlock) weakDataTaskBlock = dataTaskBlock;
+    
     NSURLSessionDataTask *task = [self dataTaskWithRequest:request
-               uploadProgress:nil
-             downloadProgress:nil
-           didReceiveResponse:didReceiveResponse
-               didReceiveData:didReceiveData
-            completionHandler:^(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error){
-        [weakSelf dataTaskDidCompleteWithResponse:response responseObject:responseObject error:error success:success failure:failure];
+                                            uploadProgress:nil
+                                          downloadProgress:nil
+                                         completionHandler:^(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error){
+        __strong typeof (weakSelf) strongSelf = weakSelf;
+        NSNumber *dataTaskKey = @(weakDataTaskBlock.taskIdentifier);
+        @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
+            NSCParameterAssert([strongSelf.dataTaskBlocksMappingDictionary objectForKey:dataTaskKey] != nil);
+            [strongSelf.dataTaskBlocksMappingDictionary removeObjectForKey:dataTaskKey];
+        }
+        [strongSelf dataTaskDidCompleteWithResponse:response
+                                     responseObject:responseObject
+                                              error:error
+                                            success:success
+                                            failure:failure];
     }];
+    
+    dataTaskBlock.taskIdentifier = task.taskIdentifier;
+    NSParameterAssert(dataTaskBlock.taskIdentifier > 0);
+    
+    @synchronized (self.dataTaskBlocksMappingDictionary) {
+        NSParameterAssert([self.dataTaskBlocksMappingDictionary objectForKey:@(task.taskIdentifier)] == nil);
+        [self.dataTaskBlocksMappingDictionary setObject:dataTaskBlock forKey:@(task.taskIdentifier)];
+    }
+    
     [task resume];
     return task;
 }
 
-#endif
+@end
+
+@implementation DZWebDAVDataTaskBlock
 
 @end

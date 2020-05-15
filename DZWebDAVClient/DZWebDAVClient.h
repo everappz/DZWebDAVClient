@@ -11,9 +11,6 @@
 #import <AFNetworking/AFNetworking.h>
 
 
-#define DZ_RANGE_REQUEST_SUPPORT
-
-
 /** The key for a uniform (MIME) type identifier returned from the property request methods. */
 extern NSString *DZWebDAVContentTypeKey;
 
@@ -274,8 +271,16 @@ typedef BOOL(^DZWebDAVClientVerifyServerIdentityBlock)(NSString *host);
                                             success:(DZWebDAVClientDataTaskSuccessBlock)success
                                             failure:(DZWebDAVClientDataTaskErrorBlock)failure;
 
-#ifdef DZ_RANGE_REQUEST_SUPPORT
-
+/**
+ Enqueues a generic request defined by the user. You need to define a connection that can handle it, probably a custom subclass
+ 
+ @param method The name of the method. Don't use usual webserver method names
+ @param dictionary  A dictionary with parameters that the server can parse
+ @param success A block callback, to be fired upon successful completion, with no arguments.
+ @param didReceiveResponseBlock A block object to be executed when the session received response from the server.
+ @param didReceiveDataBlock A block object to be executed when the new portion of data is received from the server.
+ @param failure A block callback, to be fired upon the failure of the request, with two arguments: the request operation and the network error that occurred.
+ */
 - (NSURLSessionDataTask *)makeGETRequestAtPath:(NSString *)path
                                     parameters:(NSDictionary *)params
                              additionalHeaders:(NSDictionary *)additionalHeaders
@@ -283,7 +288,5 @@ typedef BOOL(^DZWebDAVClientVerifyServerIdentityBlock)(NSString *host);
                                 didReceiveData:(DZWebDAVClientDataTaskDidReceiveDataBlock)didReceiveData
                             didReceiveResponse:(DZWebDAVClientDataTaskDidReceiveResponseBlock)didReceiveResponse
                                        failure:(DZWebDAVClientDataTaskErrorBlock)failure;
-
-#endif
 
 @end
