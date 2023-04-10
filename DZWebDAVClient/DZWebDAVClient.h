@@ -45,7 +45,7 @@ extern NSString *DZWebDAVCollectionKey;
 
 typedef void(^DZWebDAVClientDataTaskSuccessBlock)(id responseObject);
 typedef void(^DZWebDAVClientDataTaskDidReceiveDataBlock)(NSData *data);
-typedef void(^DZWebDAVClientDataTaskDidReceiveResponseBlock)(NSURLResponse *response);
+typedef NSURLSessionResponseDisposition(^DZWebDAVClientDataTaskDidReceiveResponseBlock)(NSURLResponse *response);
 typedef void(^DZWebDAVClientDataTaskErrorBlock)(NSError *error);
 typedef void(^DZWebDAVClientDataLockTaskSuccessBlock)(DZWebDAVLock *lock);
 typedef void(^DZWebDAVClientDataTaskProgressBlock)(NSProgress *taskProgress);

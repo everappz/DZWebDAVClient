@@ -190,7 +190,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
             __strong typeof (weakSelf) strongSelf = weakSelf;
             @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
                 DZWebDAVDataTaskBlock *dataTaskBlock = [strongSelf.dataTaskBlocksMappingDictionary objectForKey:@(dataTask.taskIdentifier)];
-                if(dataTaskBlock.didReceiveDataBlock){
+                if (dataTaskBlock.didReceiveDataBlock) {
                     dataTaskBlock.didReceiveDataBlock(data);
                 }
             }
@@ -198,13 +198,14 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         
         [self setDataTaskDidReceiveResponseBlock:^NSURLSessionResponseDisposition(NSURLSession * _Nonnull session, NSURLSessionDataTask * _Nonnull dataTask, NSURLResponse * _Nonnull response) {
             __strong typeof (weakSelf) strongSelf = weakSelf;
+            NSURLSessionResponseDisposition disposition = NSURLSessionResponseAllow;
             @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
                 DZWebDAVDataTaskBlock *dataTaskBlock = [strongSelf.dataTaskBlocksMappingDictionary objectForKey:@(dataTask.taskIdentifier)];
-                if(dataTaskBlock.didReceiveResponseBlock){
-                    dataTaskBlock.didReceiveResponseBlock(response);
+                if (dataTaskBlock.didReceiveResponseBlock) {
+                    disposition = dataTaskBlock.didReceiveResponseBlock(response);
                 }
             }
-            return NSURLSessionResponseAllow;
+            return disposition;
         }];
         
         
@@ -656,7 +657,7 @@ const NSTimeInterval DZWebDAVClientRequestTimeout = 30.0;
         __strong typeof (weakSelf) strongSelf = weakSelf;
         NSNumber *dataTaskKey = @(weakDataTaskBlock.taskIdentifier);
         @synchronized (strongSelf.dataTaskBlocksMappingDictionary) {
-            NSCParameterAssert([strongSelf.dataTaskBlocksMappingDictionary objectForKey:dataTaskKey] != nil);
+            NSParameterAssert([strongSelf.dataTaskBlocksMappingDictionary objectForKey:dataTaskKey] != nil);
             [strongSelf.dataTaskBlocksMappingDictionary removeObjectForKey:dataTaskKey];
         }
         [strongSelf dataTaskDidCompleteWithResponse:response
